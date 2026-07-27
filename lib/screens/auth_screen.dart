@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:taskassassin/auth/supabase_auth_manager.dart';
+import 'package:taskassassin/supabase/supabase_config.dart';
 import 'package:taskassassin/theme.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -84,6 +85,8 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final backendAvailable = SupabaseConfig.isInitialized;
+
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -132,6 +135,37 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               const SizedBox(height: 48),
+              if (!backendAvailable) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.checkGreen.withValues(alpha: 0.55)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'OFFLINE TEST BUILD',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: AppColors.checkGreen,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'The app opened successfully. Backend sign-in is disabled in this sideload build until Supabase keys are provided at build time.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
               TextField(
                 controller: _emailController,
                 decoration: const InputDecoration(
@@ -158,7 +192,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 Column(
                   children: [
                     FilledButton(
-                      onPressed: _handleEmailAuth,
+                      onPressed: backendAvailable ? _handleEmailAuth : null,
                       style: FilledButton.styleFrom(
                         minimumSize: const Size(double.infinity, 50),
                         backgroundColor: AppColors.checkGreen,
@@ -168,7 +202,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     const SizedBox(height: 16),
                     OutlinedButton.icon(
-                      onPressed: _handleGoogleSignIn,
+                      onPressed: backendAvailable ? _handleGoogleSignIn : null,
                       icon: Icon(Icons.login, color: AppColors.steelBlue),
                       label: const Text('Sign in with Google'),
                       style: OutlinedButton.styleFrom(

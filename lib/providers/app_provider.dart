@@ -47,7 +47,8 @@ class AppProvider extends ChangeNotifier {
   // True if a user profile exists. Requires profileResolved to be meaningful.
   bool get hasCompletedOnboarding => _currentUser != null;
   bool get profileResolved => _profileResolved;
-  bool get isAuthenticated => SupabaseConfig.auth.currentUser != null;
+  bool get isAuthenticated =>
+      SupabaseConfig.isInitialized && SupabaseConfig.auth.currentUser != null;
 
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -73,36 +74,43 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
 
       // Load user if authenticated (non-blocking)
-      _loadCurrentUserAndHandler().then((_) {
-        _profileResolved = true;
-        notifyListeners();
-      }).catchError((e) {
-        debugPrint('[AppProvider] Error loading user after init: $e');
-        _profileResolved = true; // avoid blocking navigation on error
-        notifyListeners();
-      });
-
-      // Listen to auth changes
-      SupabaseConfig.auth.onAuthStateChange.listen((data) async {
-        try {
-          final user = data.session?.user;
-          if (user == null) {
-            _currentUser = null;
-            _currentHandler = null;
-            _missions = [];
-            _profileResolved = true; // nothing to resolve when signed out
-            notifyListeners();
-            return;
-          }
-          _profileResolved = false; // will resolve now
-          notifyListeners();
-          await _loadCurrentUserAndHandler();
+      if (SupabaseConfig.isInitialized) {
+        _loadCurrentUserAndHandler().then((_) {
           _profileResolved = true;
           notifyListeners();
-        } catch (e) {
-          debugPrint('[AppProvider] Auth state change error: $e');
-        }
-      });
+        }).catchError((e) {
+          debugPrint('[AppProvider] Error loading user after init: $e');
+          _profileResolved = true; // avoid blocking navigation on error
+          notifyListeners();
+        });
+
+        // Listen to auth changes
+        SupabaseConfig.auth.onAuthStateChange.listen((data) async {
+          try {
+            final user = data.session?.user;
+            if (user == null) {
+              _currentUser = null;
+              _currentHandler = null;
+              _missions = [];
+              _profileResolved = true; // nothing to resolve when signed out
+              notifyListeners();
+              return;
+            }
+            _profileResolved = false; // will resolve now
+            notifyListeners();
+            await _loadCurrentUserAndHandler();
+            _profileResolved = true;
+            notifyListeners();
+          } catch (e) {
+            debugPrint('[AppProvider] Auth state change error: $e');
+          }
+        });
+      } else {
+        debugPrint('[AppProvider] Supabase unavailable; starting offline test mode.');
+        _currentHandler = handlerService.getDefaultHandler();
+        _profileResolved = true;
+        notifyListeners();
+      }
     } catch (e) {
       debugPrint('[AppProvider] Initialization error: $e');
       // Still mark as initialized to prevent infinite loading

@@ -14,19 +14,50 @@ class SupabaseConfig {
 
   static const String anonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdid3pzeGpyb213ZWZ1b3B2emZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5Mzc2MjAsImV4cCI6MjA4MDUxMzYyMH0._a6YlAfRXO01skwzar0A8km80OM27RRuzJKL__f8kqg',
+    defaultValue: '',
   );
 
+  static bool _initialized = false;
+  static Object? _initializationError;
+
+  static bool get isInitialized => _initialized;
+  static Object? get initializationError => _initializationError;
+  static bool get isConfigured =>
+      supabaseUrl.startsWith('https://') &&
+      anonKey.isNotEmpty &&
+      !anonKey.contains('...') &&
+      anonKey.split('.').length >= 3;
+
   static Future<void> initialize() async {
-    await Supabase.initialize(
-      url: supabaseUrl,
-      anonKey: anonKey,
-      debug: kDebugMode,
-    );
+    if (!isConfigured) {
+      _initialized = false;
+      _initializationError = 'Supabase URL/anon key are not configured for this build.';
+      debugPrint('[Supabase] Skipping initialization: $_initializationError');
+      return;
+    }
+
+    try {
+      await Supabase.initialize(
+        url: supabaseUrl,
+        anonKey: anonKey,
+        debug: kDebugMode,
+      );
+      _initialized = true;
+      _initializationError = null;
+    } catch (e) {
+      _initialized = false;
+      _initializationError = e;
+      debugPrint('[Supabase] Initialization failed: $e');
+    }
   }
 
-  static SupabaseClient get client => Supabase.instance.client;
+  static SupabaseClient get client {
+    if (!_initialized) {
+      throw StateError('Supabase is not initialized. Build with SUPABASE_URL and SUPABASE_ANON_KEY to enable backend features.');
+    }
+    return Supabase.instance.client;
+  }
+
   static GoTrueClient get auth => client.auth;
 }
 
