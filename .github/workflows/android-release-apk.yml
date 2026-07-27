@@ -1,0 +1,81 @@
+name: Android Release APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build release APK with debug signing fallback
+        run: flutter build apk --release --dart-define=ENABLE_PUSH=false
+
+      - name: Verify APK
+        id: apk
+        run: |
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+          test -f "$APK"
+          SHA="$(sha256sum "$APK" | awk '{print $1}')"
+          SIZE="$(du -h "$APK" | awk '{print $1}')"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "APK=$APK"
+          echo "SHA=$SHA"
+          echo "SIZE=$SIZE"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: taskassassin-questime-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: taskassassin-android-release-${{ github.run_number }}
+          SHA: ${{ steps.apk.outputs.sha }}
+          SIZE: ${{ steps.apk.outputs.size }}
+        run: |
+          cat > /tmp/release-notes.md <<EOF
+          TaskAssassin / Questime Flutter Android release-mode APK for side-loading tests.
+
+          APK: taskassassin-questime-release.apk
+          Size: $SIZE
+          SHA-256: $SHA
+
+          This is the Flutter TaskAssassin repo branded as Questime. It is separate from the Capacitor questime prototype.
+
+          Install on Android:
+          1. Download the APK asset from this release.
+          2. Open it on the phone.
+          3. Allow installs from the browser/GitHub app if Android prompts.
+          4. Install and open Questime.
+          EOF
+          gh release create "$TAG" \
+            "build/app/outputs/flutter-apk/app-release.apk#taskassassin-questime-release.apk" \
+            --title "TaskAssassin Questime Android Release $TAG" \
+            --notes-file /tmp/release-notes.md
