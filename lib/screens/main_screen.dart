@@ -246,6 +246,15 @@ class _ParentHomeState extends State<_ParentHome> {
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => context.read<AppProvider>().setCurrentTab(3),
+            icon: const Icon(Icons.phonelink_lock_rounded),
+            label: const Text('CHOOSE APPS FOR MYSELF'),
+          ),
+        ),
       ],
     );
   }
@@ -533,10 +542,10 @@ class _SettingsScreen extends StatelessWidget {
             icon: Icons.family_restroom_rounded,
             label: 'Account',
             value: user.accountRole == AccountRole.parent ? 'Parent' : 'Child'),
-        if (user.accountRole == AccountRole.child) ...[
-          const SizedBox(height: 20),
-          const _ScreenTimeSetup(),
-        ],
+        const SizedBox(height: 20),
+        _ScreenTimeSetup(
+          soloMode: user.accountRole == AccountRole.parent,
+        ),
         const SizedBox(height: 24),
         SizedBox(
           width: double.infinity,
@@ -892,7 +901,9 @@ class _QuestRow extends StatelessWidget {
 }
 
 class _ScreenTimeSetup extends StatefulWidget {
-  const _ScreenTimeSetup();
+  final bool soloMode;
+
+  const _ScreenTimeSetup({this.soloMode = false});
   @override
   State<_ScreenTimeSetup> createState() => _ScreenTimeSetupState();
 }
@@ -1056,7 +1067,7 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Play app limits',
+                  'Apps to block',
                   style: TextStyle(
                     color: _ink,
                     fontSize: 20,
@@ -1070,7 +1081,9 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
                       ? 'Choose play apps'
                       : '${_selectedPackages.length} apps chosen',
                   detail: chosenNames.isEmpty
-                      ? 'Pick a game or video app to test.'
+                      ? widget.soloMode
+                          ? 'Pick apps you want to earn access to.'
+                          : 'Pick a game or video app to limit.'
                       : chosenNames,
                   complete: _selectedPackages.isNotEmpty,
                   action: _loadingApps ? null : _chooseApps,
@@ -1080,10 +1093,12 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
                 _SetupStep(
                   number: '2',
                   title: status?.authorized == true
-                      ? 'Phone permission is on'
-                      : 'Turn on Questime',
+                      ? 'Questime control is on'
+                      : 'Allow Questime to block apps',
                   detail: status?.authorized == true
-                      ? 'Questime can now stop selected apps.'
+                      ? widget.soloMode
+                          ? 'Complete your own quests to earn access.'
+                          : 'Questime can now stop selected apps.'
                       : 'On the next screen, tap Questime and turn it on.',
                   complete: status?.authorized == true,
                   action: status?.authorized == true ? _checkAgain : _enable,

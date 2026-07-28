@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:taskassassin/models/user.dart';
 import 'package:taskassassin/models/handler.dart';
@@ -263,14 +264,16 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> _applyRewardMinutes(int awardedMinutes) async {
     var visibleMinutes = awardedMinutes;
-    if (_currentUser?.accountRole == AccountRole.child) {
+    if (_currentUser != null && !kIsWeb) {
       try {
         final screenTime = ScreenTimeService();
         await screenTime.configureAndroid(awardedMinutes: awardedMinutes);
         final configuration = await screenTime.getConfiguration();
         _availableRewardSeconds = configuration.remainingSeconds;
         visibleMinutes = (configuration.remainingSeconds / 60).ceil();
-        await screenTime.registerCurrentDevice(role: 'child');
+        await screenTime.registerCurrentDevice(
+          role: _currentUser!.accountRole.name,
+        );
       } catch (error) {
         debugPrint('[Screen Time] Allowance sync failed: $error');
       }
@@ -278,7 +281,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
     if (_availableRewardMinutes != visibleMinutes) {
       _availableRewardMinutes = visibleMinutes;
       notifyListeners();
-    } else if (_currentUser?.accountRole == AccountRole.child) {
+    } else if (_currentUser != null && !kIsWeb) {
       notifyListeners();
     }
   }

@@ -78,14 +78,15 @@ Return JSON only: {"rating": number, "feedback": string}. Rating must be 1 to 5 
       }).eq("id", missionId).select().single();
     if (updateError) throw updateError;
 
-    if (passed && quest.assigned_to_user_id) {
+    if (passed) {
+      const rewardUserId = quest.assigned_to_user_id ?? quest.user_id;
       const { data: membership } = await admin.from("family_members")
-        .select("family_id").eq("user_id", quest.assigned_to_user_id)
+        .select("family_id").eq("user_id", rewardUserId)
         .eq("status", "active").limit(1).maybeSingle();
       if (membership) {
         const reward = {
           family_id: membership.family_id,
-          child_user_id: quest.assigned_to_user_id,
+          child_user_id: rewardUserId,
           mission_id: quest.id,
           requested_minutes: Math.max(1, quest.reward_minutes),
           status: "approved",
