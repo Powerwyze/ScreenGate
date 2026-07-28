@@ -12,10 +12,6 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  static const _deviceRole = String.fromEnvironment(
-    'DEVICE_ROLE',
-    defaultValue: 'parent',
-  );
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _familyCodeController = TextEditingController();
@@ -23,6 +19,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _authManager = SupabaseAuthManager();
   bool _isSignUp = false;
   bool _isLoading = false;
+  String? _deviceRole;
 
   @override
   void dispose() {
@@ -116,6 +113,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_deviceRole == null) return _buildPhoneChoice();
     if (_deviceRole == 'child') return _buildChildPhone();
 
     return Scaffold(
@@ -163,10 +161,16 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Turn Time Into Quests',
+                'One family account',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: const Color(0xFF667684),
                     ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Parents sign in. Kids join with the family code.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF667684)),
               ),
               const SizedBox(height: 48),
               TextField(
@@ -209,9 +213,14 @@ class _AuthScreenState extends State<AuthScreen> {
                           ? 'Already have an account? Sign In'
                           : 'Don\'t have an account? Sign Up'),
                     ),
+                    TextButton.icon(
+                      onPressed: () => setState(() => _deviceRole = null),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: const Text('Choose a different phone'),
+                    ),
                     const SizedBox(height: 24),
                     Text(
-                      'v1.0.1',
+                      'v1.0.2',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: const Color(0xFF8A9AA6),
                           ),
@@ -304,14 +313,135 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 28),
               const Text(
-                'No email or password needed.',
+                'This connects to your family account.',
                 style: TextStyle(
                   color: Color(0xFF0B8F87),
                   fontWeight: FontWeight.w700,
                 ),
               ),
+              TextButton.icon(
+                onPressed: _isLoading
+                    ? null
+                    : () => setState(() => _deviceRole = null),
+                icon: const Icon(Icons.arrow_back_rounded),
+                label: const Text('Choose a different phone'),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhoneChoice() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7FAF9),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(28),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.asset(
+                      'assets/images/ChatGPT_Image_Dec_2_2025_06_29_00_PM.png',
+                      width: 96,
+                      height: 96,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Whose phone is this?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF17324D),
+                      fontSize: 30,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Pick one to get started.',
+                    style: TextStyle(color: Color(0xFF667684), fontSize: 17),
+                  ),
+                  const SizedBox(height: 36),
+                  _PhoneChoiceButton(
+                    icon: Icons.family_restroom_rounded,
+                    title: 'Parent',
+                    subtitle: 'Sign in to the family account',
+                    color: const Color(0xFF0B8F87),
+                    onTap: () => setState(() => _deviceRole = 'parent'),
+                  ),
+                  const SizedBox(height: 16),
+                  _PhoneChoiceButton(
+                    icon: Icons.child_care_rounded,
+                    title: 'Child',
+                    subtitle: 'Join with the family code',
+                    color: const Color(0xFFFF7A66),
+                    onTap: () => setState(() => _deviceRole = 'child'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PhoneChoiceButton extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _PhoneChoiceButton({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 104,
+      child: FilledButton(
+        onPressed: onTap,
+        style: FilledButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 42),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.w800)),
+                  Text(subtitle,
+                      style:
+                          const TextStyle(fontSize: 15, color: Colors.white)),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_rounded),
+          ],
         ),
       ),
     );

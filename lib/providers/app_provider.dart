@@ -19,7 +19,7 @@ import 'package:taskassassin/services/screen_time_service.dart';
 import 'package:taskassassin/services/reward_service.dart';
 import 'package:taskassassin/supabase/supabase_config.dart';
 
-class AppProvider extends ChangeNotifier {
+class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
   int _currentTab = 0;
   int get currentTab => _currentTab;
 
@@ -50,6 +50,8 @@ class AppProvider extends ChangeNotifier {
   StreamSubscription<int>? _rewardSubscription;
   int _availableRewardMinutes = 0;
   Timer? _refreshTimer;
+  bool _refreshInProgress = false;
+  int _missionRequest = 0;
 
   User? get currentUser => _currentUser;
   Handler? get currentHandler => _currentHandler;
@@ -84,6 +86,7 @@ class AppProvider extends ChangeNotifier {
       aiService = AIService();
       notificationService = NotificationService();
       bugReportService = BugReportService();
+      WidgetsBinding.instance.addObserver(this);
 
       // Mark initialized early so the UI can render
       _isInitialized = true;
@@ -218,9 +221,10 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> loadMissions() async {
     if (_currentUser == null) return;
+    final request = ++_missionRequest;
     try {
       final fetchedMissions = await missionService.getVisibleMissions();
-
+      if (request != _missionRequest || _currentUser == null) return;
       _missions = fetchedMissions;
       _missions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       notifyListeners();
@@ -257,19 +261,34 @@ class AppProvider extends ChangeNotifier {
 
   void _startRefreshFallback() {
     _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 8), (_) async {
-      if (_currentUser == null) return;
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 4),
+      (_) => refreshFamilyData(),
+    );
+  }
+
+  Future<void> refreshFamilyData() async {
+    if (_currentUser == null || _refreshInProgress) return;
+    _refreshInProgress = true;
+    try {
       await loadMissions();
-      try {
-        final minutes = await RewardService().getAvailableMinutes();
-        if (_availableRewardMinutes != minutes) {
-          _availableRewardMinutes = minutes;
-          notifyListeners();
-        }
-      } catch (error) {
-        debugPrint('[AppProvider] Reward refresh failed: $error');
+      final minutes = await RewardService().getAvailableMinutes();
+      if (_availableRewardMinutes != minutes) {
+        _availableRewardMinutes = minutes;
+        notifyListeners();
       }
-    });
+    } catch (error) {
+      debugPrint('[AppProvider] Family refresh failed: $error');
+    } finally {
+      _refreshInProgress = false;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      refreshFamilyData();
+    }
   }
 
   Future<void> refreshUser() async {
@@ -320,6 +339,7 @@ class AppProvider extends ChangeNotifier {
   Future<void> approveMission(String missionId) async {
     final mission = await missionService.approveFamilyQuest(missionId);
     await updateMission(mission);
+    await refreshFamilyData();
   }
 
   Future<void> signOut() async {
@@ -348,5 +368,14 @@ class AppProvider extends ChangeNotifier {
       debugPrint('[AppProvider] Sign out error: $e');
       rethrow;
     }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
+    _missionSubscription?.cancel();
+    _rewardSubscription?.cancel();
+    super.dispose();
   }
 }
