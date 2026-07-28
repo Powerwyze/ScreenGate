@@ -23,6 +23,8 @@ class MissionService {
     String? assignedByUserId,
     String? assignedToUserId,
     int rewardMinutes = 15,
+    MissionApprovalMode approvalMode = MissionApprovalMode.manual,
+    double minimumPassingRating = 4,
   }) async {
     try {
       final missionId = const Uuid().v4();
@@ -40,6 +42,8 @@ class MissionService {
         assignedByUserId: assignedByUserId,
         assignedToUserId: assignedToUserId,
         rewardMinutes: rewardMinutes,
+        approvalMode: approvalMode,
+        minimumPassingRating: minimumPassingRating,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -105,6 +109,28 @@ class MissionService {
       params: {'p_mission_id': missionId},
     );
     return Mission.fromJson(Map<String, dynamic>.from(result as Map));
+  }
+
+  Future<Mission> setMissionPhoto({
+    required String missionId,
+    required String photoUrl,
+    required bool isBefore,
+  }) async {
+    final result = await SupabaseConfig.client.rpc(
+      isBefore ? 'set_quest_before_photo' : 'set_quest_after_photo',
+      params: {'p_mission_id': missionId, 'p_photo_url': photoUrl},
+    );
+    return Mission.fromJson(Map<String, dynamic>.from(result as Map));
+  }
+
+  Future<Mission> gradeQuest(String missionId) async {
+    final response = await SupabaseConfig.client.functions.invoke(
+      'grade-quest',
+      body: {'missionId': missionId},
+    );
+    final body = Map<String, dynamic>.from(response.data as Map);
+    if (body['error'] != null) throw Exception(body['error']);
+    return Mission.fromJson(Map<String, dynamic>.from(body['quest'] as Map));
   }
 
   Stream<List<Mission>> getMissionsStreamByUserId(String userId) {
@@ -283,7 +309,7 @@ class MissionService {
   Future<void> updateMissionVerification({
     required String missionId,
     required String aiFeedback,
-    required int starsEarned,
+    required double starsEarned,
     required MissionStatus status,
   }) async {
     try {

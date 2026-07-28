@@ -19,6 +19,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _authManager = SupabaseAuthManager();
   bool _isSignUp = false;
   bool _isLoading = false;
+  bool _isRecoveringChild = false;
   String? _deviceRole;
 
   @override
@@ -33,6 +34,28 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _joinFamily() async {
     final code = _familyCodeController.text.trim();
     final name = _childNameController.text.trim();
+    if (_isRecoveringChild) {
+      if (code.length != 8) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enter the 8-character child code.')),
+        );
+        return;
+      }
+      setState(() => _isLoading = true);
+      try {
+        await FamilyService().recoverChild(code);
+        await context.read<AppProvider>().reloadProfile();
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('That child code did not work.')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+      return;
+    }
     if (code.length != 6 || name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -167,7 +190,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Parents sign in. Kids join with the family code.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Color(0xFF667684)),
@@ -256,7 +279,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               const SizedBox(height: 28),
-              const Text(
+              Text(
                 'Child Phone',
                 style: TextStyle(
                   color: Color(0xFF17324D),
@@ -265,34 +288,38 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
-                'Enter the family code from your parent.',
+              Text(
+                _isRecoveringChild
+                    ? 'Enter this phone’s child code.'
+                    : 'Enter the family code from your parent.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF667684), fontSize: 17),
+                style: const TextStyle(color: Color(0xFF667684), fontSize: 17),
               ),
               const SizedBox(height: 44),
-              TextField(
-                controller: _childNameController,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  labelText: 'Your name',
-                  prefixIcon: Icon(Icons.face_rounded),
+              if (!_isRecoveringChild) ...[
+                TextField(
+                  controller: _childNameController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Your name',
+                    prefixIcon: Icon(Icons.face_rounded),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
               TextField(
                 controller: _familyCodeController,
                 textAlign: TextAlign.center,
                 textCapitalization: TextCapitalization.characters,
-                maxLength: 6,
+                maxLength: _isRecoveringChild ? 8 : 6,
                 style: const TextStyle(
                   color: Color(0xFF17324D),
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 8,
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'Family code',
+                decoration: InputDecoration(
+                  labelText: _isRecoveringChild ? 'Child code' : 'Family code',
                   counterText: '',
                 ),
               ),
@@ -308,12 +335,27 @@ class _AuthScreenState extends State<AuthScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.link_rounded),
-                  label: Text(_isLoading ? 'JOINING...' : 'JOIN MY FAMILY'),
+                  label: Text(_isLoading
+                      ? 'CONNECTING...'
+                      : _isRecoveringChild
+                          ? 'OPEN MY QUESTS'
+                          : 'JOIN MY FAMILY'),
                 ),
               ),
               const SizedBox(height: 28),
+              TextButton(
+                onPressed: _isLoading
+                    ? null
+                    : () => setState(() {
+                          _isRecoveringChild = !_isRecoveringChild;
+                          _familyCodeController.clear();
+                        }),
+                child: Text(_isRecoveringChild
+                    ? 'This is a new child phone'
+                    : 'This phone was paired before'),
+              ),
               const Text(
-                'This connects to your family account.',
+                'One code. Same child. Same quests.',
                 style: TextStyle(
                   color: Color(0xFF0B8F87),
                   fontWeight: FontWeight.w700,

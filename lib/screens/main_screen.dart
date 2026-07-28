@@ -103,6 +103,34 @@ class _ParentHome extends StatelessWidget {
             );
           },
         ),
+        FutureBuilder<List<FamilyChild>>(
+          future: FamilyService().getChildren(),
+          builder: (context, snapshot) {
+            final devices = (snapshot.data ?? const <FamilyChild>[])
+                .expand(
+                    (child) => child.devices.map((device) => (child, device)))
+                .toList();
+            if (devices.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                const _SectionTitle(title: 'Connected phones'),
+                const SizedBox(height: 8),
+                ...devices.map((item) => _AttentionRow(
+                      icon: item.$2.platform == 'android'
+                          ? Icons.android_rounded
+                          : Icons.phone_iphone_rounded,
+                      color: item.$2.screenTimeAuthorized ? _teal : _coral,
+                      title: '${item.$1.name} · ${item.$2.name}',
+                      subtitle: item.$2.screenTimeAuthorized
+                          ? 'Screen time ready'
+                          : 'Finish screen time setup',
+                    )),
+              ],
+            );
+          },
+        ),
         const SizedBox(height: 20),
         Row(
           children: [
@@ -287,21 +315,29 @@ class _FamilyScreen extends StatelessWidget {
               );
             }
             return Column(
-              children: children.map((child) {
-                final device =
-                    child.devices.isEmpty ? null : child.devices.first;
-                final platform =
-                    device?.platform == 'android' ? 'Android' : 'iPhone';
-                return _AttentionRow(
-                  icon: device?.platform == 'android'
-                      ? Icons.android_rounded
-                      : Icons.phone_iphone_rounded,
-                  color: device?.screenTimeAuthorized == true ? _teal : _coral,
-                  title: child.name,
-                  subtitle: device == null
-                      ? 'Paired, waiting for phone details'
-                      : '$platform • ${device.screenTimeAuthorized ? 'Screen Time ready' : 'Needs Screen Time setup'}',
-                );
+              children: children.expand((child) {
+                if (child.devices.isEmpty) {
+                  return [
+                    _AttentionRow(
+                      icon: Icons.phone_iphone_rounded,
+                      color: _coral,
+                      title: child.name,
+                      subtitle: 'Paired, waiting for phone details',
+                    )
+                  ];
+                }
+                return child.devices.map((device) => _AttentionRow(
+                      icon: device.platform == 'android'
+                          ? Icons.android_rounded
+                          : Icons.phone_iphone_rounded,
+                      color: device.screenTimeAuthorized ? _teal : _coral,
+                      title: '${child.name} · ${device.name}',
+                      subtitle: device.screenTimeAuthorized
+                          ? 'Screen time ready'
+                          : 'Needs screen time setup',
+                      actionIcon: Icons.key_rounded,
+                      onAction: () => _showChildRecoveryCode(context, child),
+                    ));
               }).toList(),
             );
           },
@@ -563,11 +599,15 @@ class _AttentionRow extends StatelessWidget {
   final Color color;
   final String title;
   final String subtitle;
+  final IconData? actionIcon;
+  final VoidCallback? onAction;
   const _AttentionRow(
       {required this.icon,
       required this.color,
       required this.title,
-      required this.subtitle});
+      required this.subtitle,
+      this.actionIcon,
+      this.onAction});
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(16),
@@ -590,8 +630,63 @@ class _AttentionRow extends StatelessWidget {
                     style: const TextStyle(
                         color: Color(0xFF667684), fontSize: 13)),
               ])),
+          if (onAction != null)
+            IconButton(
+              tooltip: 'Child login code',
+              onPressed: onAction,
+              icon: Icon(actionIcon),
+            ),
         ]),
       );
+}
+
+Future<void> _showChildRecoveryCode(BuildContext context, FamilyChild child,
+    {bool rotate = false}) async {
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => FutureBuilder<ChildRecoveryCode>(
+      future: FamilyService().createChildRecoveryCode(child.id, rotate: rotate),
+      builder: (context, snapshot) => AlertDialog(
+        title: Text('${child.name}’s child code'),
+        content: snapshot.connectionState != ConnectionState.done
+            ? const SizedBox(
+                height: 80, child: Center(child: CircularProgressIndicator()))
+            : snapshot.hasError
+                ? const Text('Could not make a code. Please try again.')
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        snapshot.data!.code,
+                        style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 6),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Use this after reinstalling or signing out. Making a new code replaces the old one.',
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+        actions: [
+          if (snapshot.hasData)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _showChildRecoveryCode(context, child, rotate: true);
+              },
+              child: const Text('NEW CODE'),
+            ),
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('DONE')),
+        ],
+      ),
+    ),
+  );
 }
 
 class _ActionTile extends StatelessWidget {

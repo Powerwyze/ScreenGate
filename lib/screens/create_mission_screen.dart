@@ -26,8 +26,10 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
   MissionType _type = MissionType.selfAssigned;
   User? _assignee;
   List<FamilyChild> _children = const [];
-  FamilyChild? _selectedChild;
+  String? _selectedUserId;
   int _rewardMinutes = 15;
+  MissionApprovalMode _approvalMode = MissionApprovalMode.manual;
+  double _minimumRating = 4;
   bool _loadingChildren = true;
 
   @override
@@ -46,7 +48,7 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
       if (!mounted) return;
       setState(() {
         _children = children;
-        _selectedChild = children.isEmpty ? null : children.first;
+        _selectedUserId = context.read<AppProvider>().currentUser?.id;
         _loadingChildren = false;
       });
     } catch (_) {
@@ -81,14 +83,7 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
     final user = provider.currentUser;
     if (user == null) return;
 
-    final isParent = user.accountRole == AccountRole.parent;
-    if (isParent && _selectedChild == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pair a child phone first.')),
-      );
-      return;
-    }
-    final targetUserId = _selectedChild?.id ?? _assignee?.id ?? user.id;
+    final targetUserId = _selectedUserId ?? _assignee?.id ?? user.id;
     final isAssignment = targetUserId != user.id;
     final missionType = isAssignment ? MissionType.friendAssigned : _type;
 
@@ -103,6 +98,8 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
         assignedByUserId: isAssignment ? user.id : null,
         assignedToUserId: isAssignment ? targetUserId : null,
         rewardMinutes: _rewardMinutes,
+        approvalMode: _approvalMode,
+        minimumPassingRating: _minimumRating,
       );
 
       if (mission.userId == user.id) {
@@ -113,9 +110,7 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              isAssignment
-                  ? 'Quest sent to ${_selectedChild?.name ?? _assignee?.codename ?? 'child'}'
-                  : 'Quest created',
+              isAssignment ? 'Quest sent' : 'Quest created',
             ),
           ),
         );
@@ -147,27 +142,23 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                   AccountRole.parent) ...[
                 if (_loadingChildren)
                   const LinearProgressIndicator()
-                else if (_children.isEmpty)
-                  const ListTile(
-                    leading: Icon(Icons.link_off_rounded),
-                    title: Text('No child phone paired'),
-                    subtitle: Text('Pair a child from the Family tab first.'),
-                  )
                 else
-                  DropdownButtonFormField<FamilyChild>(
-                    initialValue: _selectedChild,
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedUserId,
                     decoration: const InputDecoration(
                       labelText: 'Who is this quest for?',
-                      prefixIcon: Icon(Icons.child_care_rounded),
+                      prefixIcon: Icon(Icons.person_rounded),
                     ),
-                    items: _children
-                        .map((child) => DropdownMenuItem(
-                              value: child,
-                              child: Text(child.name),
-                            ))
-                        .toList(),
-                    onChanged: (child) =>
-                        setState(() => _selectedChild = child),
+                    items: [
+                      DropdownMenuItem(
+                          value: context.read<AppProvider>().currentUser!.id,
+                          child: const Text('Me')),
+                      ..._children.map((child) => DropdownMenuItem(
+                            value: child.id,
+                            child: Text(child.name),
+                          )),
+                    ],
+                    onChanged: (id) => setState(() => _selectedUserId = id),
                   ),
                 const SizedBox(height: 16),
               ],
@@ -227,6 +218,42 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                 onChanged: (value) =>
                     setState(() => _rewardMinutes = value ?? 15),
               ),
+              const SizedBox(height: 16),
+              SegmentedButton<MissionApprovalMode>(
+                segments: const [
+                  ButtonSegment(
+                    value: MissionApprovalMode.manual,
+                    icon: Icon(Icons.touch_app_rounded),
+                    label: Text('I approve'),
+                  ),
+                  ButtonSegment(
+                    value: MissionApprovalMode.ai,
+                    icon: Icon(Icons.auto_awesome_rounded),
+                    label: Text('AI grades'),
+                  ),
+                ],
+                selected: {_approvalMode},
+                onSelectionChanged: (value) =>
+                    setState(() => _approvalMode = value.first),
+              ),
+              if (_approvalMode == MissionApprovalMode.ai) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<double>(
+                  initialValue: _minimumRating,
+                  decoration: const InputDecoration(
+                    labelText: 'Stars needed to pass',
+                    prefixIcon: Icon(Icons.star_rounded),
+                  ),
+                  items: [3.0, 3.5, 4.0, 4.5, 5.0]
+                      .map((rating) => DropdownMenuItem(
+                            value: rating,
+                            child: Text('$rating stars'),
+                          ))
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => _minimumRating = value ?? 4),
+                ),
+              ],
               const SizedBox(height: 16),
               if (_assignee != null) ...[
                 ListTile(

@@ -1,4 +1,5 @@
 import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FamilyChild {
   final String id;
@@ -44,6 +45,13 @@ class FamilyPairingCode {
       expiresAt: DateTime.parse(json['expires_at'] as String),
     );
   }
+}
+
+class ChildRecoveryCode {
+  final String code;
+  final String childUserId;
+
+  const ChildRecoveryCode({required this.code, required this.childUserId});
 }
 
 class FamilyService {
@@ -132,5 +140,33 @@ class FamilyService {
       if (createdAnonymousSession) await SupabaseConfig.auth.signOut();
       rethrow;
     }
+  }
+
+  Future<ChildRecoveryCode> createChildRecoveryCode(
+    String childUserId, {
+    bool rotate = false,
+  }) async {
+    final result = await SupabaseConfig.client.rpc(
+      'create_child_recovery_code',
+      params: {'p_child_user_id': childUserId, 'p_rotate': rotate},
+    );
+    final data = Map<String, dynamic>.from(result as Map);
+    return ChildRecoveryCode(
+      code: data['code'] as String,
+      childUserId: data['child_user_id'] as String,
+    );
+  }
+
+  Future<void> recoverChild(String code) async {
+    final response = await SupabaseConfig.client.functions.invoke(
+      'recover-child',
+      body: {'code': code.trim().toUpperCase()},
+    );
+    final data = Map<String, dynamic>.from(response.data as Map);
+    if (data['error'] != null) throw Exception(data['error']);
+    await SupabaseConfig.auth.verifyOTP(
+      tokenHash: data['tokenHash'] as String,
+      type: OtpType.magiclink,
+    );
   }
 }

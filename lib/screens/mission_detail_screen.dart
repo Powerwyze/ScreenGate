@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:taskassassin/services/image_upload_service.dart';
 import 'package:taskassassin/providers/app_provider.dart';
 import 'package:taskassassin/models/mission.dart';
+import 'package:taskassassin/models/user.dart';
 import 'package:taskassassin/theme.dart';
 import 'package:intl/intl.dart';
 // Removed heavy image manipulation; reusing reliable avatar upload pipeline
@@ -41,6 +42,10 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
   }
 
   Future<void> _addPhoto(bool isBefore) async {
+    if (!isBefore) {
+      await _capturePhoto(false);
+      return;
+    }
     // Let user choose Camera or Upload
     final choice = await showModalBottomSheet<_PickSource>(
       context: context,
@@ -154,23 +159,26 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
       debugPrint('[MissionDetail] Uploaded. URL length: ${downloadUrl.length}');
 
       debugPrint('[MissionDetail] Updating mission photos in Firestore...');
-      await provider.missionService.updateMissionPhotos(
+      final saved = await provider.missionService.setMissionPhoto(
         missionId: _mission.id,
-        beforePhotoUrl: isBefore ? downloadUrl : null,
-        afterPhotoUrl: !isBefore ? downloadUrl : null,
+        photoUrl: downloadUrl,
+        isBefore: isBefore,
       );
       debugPrint(
           '[MissionDetail] Firestore mission photo update complete. Refreshing mission...');
 
-      final updated = await provider.missionService.getMissionById(_mission.id);
-      if (updated != null) {
-        setState(() => _mission = updated);
-        await provider.updateMission(updated);
-        debugPrint(
-            '[MissionDetail] Mission refreshed. beforeUrl=${updated.beforePhotoUrl?.substring(0, math.min(updated.beforePhotoUrl?.length ?? 0, 40))}... afterUrl=${updated.afterPhotoUrl?.substring(0, math.min(updated.afterPhotoUrl?.length ?? 0, 40))}...');
+      var updated = saved;
+      if (!isBefore && updated.approvalMode == MissionApprovalMode.ai) {
+        updated = await provider.missionService.gradeQuest(_mission.id);
       }
+      setState(() => _mission = updated);
+      await provider.updateMission(updated);
+      debugPrint(
+          '[MissionDetail] Mission refreshed. beforeUrl=${updated.beforePhotoUrl?.substring(0, math.min(updated.beforePhotoUrl?.length ?? 0, 40))}... afterUrl=${updated.afterPhotoUrl?.substring(0, math.min(updated.afterPhotoUrl?.length ?? 0, 40))}...');
 
-      if (!isBefore && _mission.beforePhotoUrl != null) {
+      if (!isBefore &&
+          _mission.beforePhotoUrl != null &&
+          _mission.approvalMode == MissionApprovalMode.manual) {
         _showVerifyDialog();
       }
     } catch (e) {
@@ -270,6 +278,12 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final currentUser = context.read<AppProvider>().currentUser!;
+    final isParent = currentUser.accountRole == AccountRole.parent;
+    final isSelfAssigned =
+        _mission.userId == currentUser.id && _mission.assignedToUserId == null;
+    final canAddBefore = isParent;
+    final canAddAfter = !isParent || isSelfAssigned;
 
     return Scaffold(
       appBar: AppBar(
@@ -318,7 +332,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                   child: _buildPhotoCard(
                     'Before Photo',
                     _mission.beforePhotoUrl,
-                    () => _addPhoto(true),
+                    canAddBefore ? () => _addPhoto(true) : null,
                     Icons.photo_camera,
                   ),
                 ),
@@ -327,7 +341,9 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                   child: _buildPhotoCard(
                     'After Photo',
                     _mission.afterPhotoUrl,
-                    () => _addPhoto(false),
+                    canAddAfter && _mission.beforePhotoUrl != null
+                        ? () => _addPhoto(false)
+                        : null,
                     Icons.photo_camera,
                   ),
                 ),
@@ -362,9 +378,11 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                       children: List.generate(
                         5,
                         (index) => Icon(
-                          index < _mission.starsEarned
+                          index + 1 <= _mission.starsEarned
                               ? Icons.star
-                              : Icons.star_border,
+                              : index + .5 <= _mission.starsEarned
+                                  ? Icons.star_half
+                                  : Icons.star_border,
                           size: 32,
                           color: theme.colorScheme.tertiary,
                         ),
@@ -396,6 +414,32 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Text('SEND TO PARENT'),
+                ),
+              ),
+            ],
+            if (isParent &&
+                _mission.approvalMode == MissionApprovalMode.manual &&
+                _mission.status == MissionStatus.completed) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _isVerifying
+                      ? null
+                      : () async {
+                          setState(() => _isVerifying = true);
+                          try {
+                            final approved = await context
+                                .read<AppProvider>()
+                                .missionService
+                                .approveFamilyQuest(_mission.id);
+                            if (mounted) setState(() => _mission = approved);
+                          } finally {
+                            if (mounted) setState(() => _isVerifying = false);
+                          }
+                        },
+                  icon: const Icon(Icons.check_circle_rounded),
+                  label: const Text('APPROVE QUEST'),
                 ),
               ),
             ],
@@ -445,7 +489,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
   }
 
   Widget _buildPhotoCard(
-      String title, String? photoUrl, VoidCallback onTap, IconData icon) {
+      String title, String? photoUrl, VoidCallback? onTap, IconData icon) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -475,7 +519,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Tap to add photo',
+                      onTap == null ? 'Waiting' : 'Tap to add photo',
                       style: context.textStyles.bodySmall!.withColor(
                         Theme.of(context).colorScheme.onSurfaceVariant,
                       ),

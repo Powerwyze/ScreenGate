@@ -2,6 +2,8 @@ enum MissionType { selfAssigned, aiSuggested, friendAssigned, recurring }
 
 enum MissionStatus { pending, inProgress, completed, verified, failed }
 
+enum MissionApprovalMode { manual, ai }
+
 class Mission {
   static const Object _unset = Object();
 
@@ -16,8 +18,10 @@ class Mission {
   final String? recurrencePattern;
   final String? beforePhotoUrl;
   final String? afterPhotoUrl;
-  final int starsEarned;
+  final double starsEarned;
   final int rewardMinutes;
+  final MissionApprovalMode approvalMode;
+  final double minimumPassingRating;
   final String? aiFeedback;
   final String? assignedByUserId;
   final String? assignedToUserId;
@@ -39,6 +43,8 @@ class Mission {
     this.afterPhotoUrl,
     this.starsEarned = 0,
     this.rewardMinutes = 15,
+    this.approvalMode = MissionApprovalMode.manual,
+    this.minimumPassingRating = 4,
     this.aiFeedback,
     this.assignedByUserId,
     this.assignedToUserId,
@@ -67,6 +73,8 @@ class Mission {
         'after_photo_url': afterPhotoUrl,
         'stars_earned': starsEarned,
         'reward_minutes': rewardMinutes,
+        'approval_mode': approvalMode.name,
+        'minimum_passing_rating': minimumPassingRating,
         'ai_feedback': aiFeedback,
         'assigned_by_user_id': assignedByUserId,
         'assigned_to_user_id': assignedToUserId,
@@ -94,8 +102,14 @@ class Mission {
       recurrencePattern: json['recurrence_pattern'] as String?,
       beforePhotoUrl: json['before_photo_url'] as String?,
       afterPhotoUrl: json['after_photo_url'] as String?,
-      starsEarned: json['stars_earned'] as int? ?? 0,
+      starsEarned: (json['stars_earned'] as num?)?.toDouble() ?? 0,
       rewardMinutes: json['reward_minutes'] as int? ?? 15,
+      approvalMode: MissionApprovalMode.values.firstWhere(
+        (mode) => mode.name == json['approval_mode'],
+        orElse: () => MissionApprovalMode.manual,
+      ),
+      minimumPassingRating:
+          (json['minimum_passing_rating'] as num?)?.toDouble() ?? 4,
       aiFeedback: json['ai_feedback'] as String?,
       assignedByUserId: json['assigned_by_user_id'] as String?,
       assignedToUserId: json['assigned_to_user_id'] as String?,
@@ -117,8 +131,10 @@ class Mission {
     Object? recurrencePattern = _unset,
     Object? beforePhotoUrl = _unset,
     Object? afterPhotoUrl = _unset,
-    int? starsEarned,
+    double? starsEarned,
     int? rewardMinutes,
+    MissionApprovalMode? approvalMode,
+    double? minimumPassingRating,
     Object? aiFeedback = _unset,
     Object? assignedByUserId = _unset,
     Object? assignedToUserId = _unset,
@@ -147,6 +163,8 @@ class Mission {
             : afterPhotoUrl as String?,
         starsEarned: starsEarned ?? this.starsEarned,
         rewardMinutes: rewardMinutes ?? this.rewardMinutes,
+        approvalMode: approvalMode ?? this.approvalMode,
+        minimumPassingRating: minimumPassingRating ?? this.minimumPassingRating,
         aiFeedback: identical(aiFeedback, _unset)
             ? this.aiFeedback
             : aiFeedback as String?,
