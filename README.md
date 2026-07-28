@@ -25,7 +25,7 @@ Release builds can override app configuration with Dart defines:
 
 ```sh
 flutter build appbundle --release \
-  --dart-define=SUPABASE_URL=https://gbwzsxjromwefuopvzfg.supabase.co \
+  --dart-define=SUPABASE_URL=https://foplbkcnkrolglzxayjt.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=... \
   --dart-define=ENABLE_PUSH=false
 ```

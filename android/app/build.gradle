@@ -40,7 +40,7 @@ android {
     defaultConfig {
         applicationId = "com.powerwyze.questime"
         // Firebase Messaging requires minSdk 23+.
-        minSdk = 23
+        minSdkVersion = flutter.minSdkVersion
         targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName

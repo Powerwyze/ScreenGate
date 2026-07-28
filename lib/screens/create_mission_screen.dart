@@ -5,6 +5,7 @@ import 'package:taskassassin/providers/app_provider.dart';
 import 'package:taskassassin/models/mission.dart';
 import 'package:taskassassin/models/user.dart';
 import 'package:taskassassin/theme.dart';
+import 'package:taskassassin/services/family_service.dart';
 
 class CreateMissionScreen extends StatefulWidget {
   const CreateMissionScreen({super.key, this.assignee});
@@ -24,6 +25,10 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
   DateTime? _deadline;
   MissionType _type = MissionType.selfAssigned;
   User? _assignee;
+  List<FamilyChild> _children = const [];
+  FamilyChild? _selectedChild;
+  int _rewardMinutes = 15;
+  bool _loadingChildren = true;
 
   @override
   void initState() {
@@ -31,6 +36,21 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
     _assignee = widget.assignee;
     if (_assignee != null) {
       _type = MissionType.friendAssigned;
+    }
+    _loadChildren();
+  }
+
+  Future<void> _loadChildren() async {
+    try {
+      final children = await FamilyService().getChildren();
+      if (!mounted) return;
+      setState(() {
+        _children = children;
+        _selectedChild = children.isEmpty ? null : children.first;
+        _loadingChildren = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingChildren = false);
     }
   }
 
@@ -61,9 +81,16 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
     final user = provider.currentUser;
     if (user == null) return;
 
-    final targetUserId = _assignee?.id ?? user.id;
-    final isFriendAssignment = _assignee != null;
-    final missionType = isFriendAssignment ? MissionType.friendAssigned : _type;
+    final isParent = user.accountRole == AccountRole.parent;
+    if (isParent && _selectedChild == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pair a child phone first.')),
+      );
+      return;
+    }
+    final targetUserId = _selectedChild?.id ?? _assignee?.id ?? user.id;
+    final isAssignment = targetUserId != user.id;
+    final missionType = isAssignment ? MissionType.friendAssigned : _type;
 
     try {
       final mission = await provider.missionService.createMission(
@@ -73,8 +100,9 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
         completedState: _completedStateController.text,
         type: missionType,
         deadline: _deadline,
-        assignedByUserId: isFriendAssignment ? user.id : null,
-        assignedToUserId: isFriendAssignment ? _assignee?.id : null,
+        assignedByUserId: isAssignment ? user.id : null,
+        assignedToUserId: isAssignment ? targetUserId : null,
+        rewardMinutes: _rewardMinutes,
       );
 
       if (mission.userId == user.id) {
@@ -85,9 +113,9 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              isFriendAssignment
-                  ? 'Mission assigned to ${_assignee?.codename ?? 'friend'}'
-                  : 'Mission created successfully',
+              isAssignment
+                  ? 'Quest sent to ${_selectedChild?.name ?? _assignee?.codename ?? 'child'}'
+                  : 'Quest created',
             ),
           ),
         );
@@ -106,7 +134,7 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Mission'),
+        title: const Text('New Quest'),
       ),
       body: SingleChildScrollView(
         padding: AppSpacing.paddingLg,
@@ -115,15 +143,45 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (context.read<AppProvider>().currentUser?.accountRole ==
+                  AccountRole.parent) ...[
+                if (_loadingChildren)
+                  const LinearProgressIndicator()
+                else if (_children.isEmpty)
+                  const ListTile(
+                    leading: Icon(Icons.link_off_rounded),
+                    title: Text('No child phone paired'),
+                    subtitle: Text('Pair a child from the Family tab first.'),
+                  )
+                else
+                  DropdownButtonFormField<FamilyChild>(
+                    initialValue: _selectedChild,
+                    decoration: const InputDecoration(
+                      labelText: 'Who is this quest for?',
+                      prefixIcon: Icon(Icons.child_care_rounded),
+                    ),
+                    items: _children
+                        .map((child) => DropdownMenuItem(
+                              value: child,
+                              child: Text(child.name),
+                            ))
+                        .toList(),
+                    onChanged: (child) =>
+                        setState(() => _selectedChild = child),
+                  ),
+                const SizedBox(height: 16),
+              ],
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(
-                  labelText: 'Mission Title',
+                  labelText: 'What needs to be done?',
                   hintText: 'e.g., Clean the garage',
                   prefixIcon: const Icon(Icons.title),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md)),
                 ),
-                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                validator: (value) =>
+                    value?.isEmpty ?? true ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -132,10 +190,12 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                   labelText: 'Description',
                   hintText: 'What needs to be done?',
                   prefixIcon: const Icon(Icons.description),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md)),
                 ),
                 maxLines: 3,
-                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                validator: (value) =>
+                    value?.isEmpty ?? true ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -144,43 +204,35 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                   labelText: 'Completed State',
                   hintText: 'How will you know it\'s done?',
                   prefixIcon: const Icon(Icons.check_circle),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md)),
                 ),
                 maxLines: 2,
-                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                validator: (value) =>
+                    value?.isEmpty ?? true ? 'Required' : null,
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<MissionType>(
-                value: _type,
-                decoration: InputDecoration(
-                  labelText: 'Mission Type',
-                  prefixIcon: const Icon(Icons.category),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+              DropdownButtonFormField<int>(
+                initialValue: _rewardMinutes,
+                decoration: const InputDecoration(
+                  labelText: 'Screen time reward',
+                  prefixIcon: Icon(Icons.timer_outlined),
                 ),
-                items: [
-                  DropdownMenuItem(
-                    value: MissionType.selfAssigned,
-                    child: const Text('Self-Assigned'),
-                  ),
-                  DropdownMenuItem(
-                    value: MissionType.recurring,
-                    child: const Text('Recurring'),
-                  ),
-                  if (_assignee != null)
-                    DropdownMenuItem(
-                      value: MissionType.friendAssigned,
-                      child: const Text('Assign to Friend'),
-                    ),
-                ],
-                onChanged: _assignee != null
-                    ? null
-                    : (value) => setState(() => _type = value ?? MissionType.selfAssigned),
+                items: const [10, 15, 20, 30, 45, 60]
+                    .map((minutes) => DropdownMenuItem(
+                          value: minutes,
+                          child: Text('$minutes minutes'),
+                        ))
+                    .toList(),
+                onChanged: (value) =>
+                    setState(() => _rewardMinutes = value ?? 15),
               ),
               const SizedBox(height: 16),
               if (_assignee != null) ...[
                 ListTile(
                   tileColor: CyberpunkColors.surfaceVariant,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md)),
                   leading: const Icon(Icons.person_add_alt),
                   title: Text('Assigning to ${_assignee!.codename}'),
                   subtitle: Text('They will receive this mission'),
@@ -193,7 +245,8 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                   decoration: InputDecoration(
                     labelText: 'Deadline (Optional)',
                     prefixIcon: const Icon(Icons.calendar_today),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md)),
                   ),
                   child: Text(
                     _deadline == null
@@ -207,7 +260,7 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                 onPressed: _createMission,
                 child: const Padding(
                   padding: AppSpacing.paddingMd,
-                  child: Text('Create Mission'),
+                  child: Text('Create Quest'),
                 ),
               ),
             ],

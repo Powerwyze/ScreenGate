@@ -22,10 +22,11 @@ class MissionService {
     String? recurrencePattern,
     String? assignedByUserId,
     String? assignedToUserId,
+    int rewardMinutes = 15,
   }) async {
     try {
       final missionId = const Uuid().v4();
-      
+
       final mission = Mission(
         id: missionId,
         userId: userId,
@@ -38,6 +39,7 @@ class MissionService {
         recurrencePattern: recurrencePattern,
         assignedByUserId: assignedByUserId,
         assignedToUserId: assignedToUserId,
+        rewardMinutes: rewardMinutes,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -46,19 +48,22 @@ class MissionService {
 
       // Send notification if mission is assigned to someone
       if (assignedToUserId != null && assignedByUserId != null) {
-        final assignerData = await SupabaseService.selectSingle(
-          'users',
-          filters: {'id': assignedByUserId},
-        );
-        final assignerName = assignerData?['codename'] ?? 'A friend';
-
-        await _notificationService.createNotification(
-          userId: assignedToUserId,
-          type: NotificationType.missionAssigned,
-          title: 'New Mission Assigned',
-          message: '$assignerName assigned you a mission: $title',
-          data: {'mission_id': mission.id},
-        );
+        try {
+          final assignerData = await SupabaseService.selectSingle(
+            'users',
+            filters: {'id': assignedByUserId},
+          );
+          final assignerName = assignerData?['codename'] ?? 'Your parent';
+          await _notificationService.createNotification(
+            userId: assignedToUserId,
+            type: NotificationType.missionAssigned,
+            title: 'New Quest',
+            message: '$assignerName sent you a quest: $title',
+            data: {'mission_id': mission.id},
+          );
+        } catch (error) {
+          debugPrint('[MissionService] Notification skipped: $error');
+        }
       }
 
       return mission;
@@ -84,6 +89,24 @@ class MissionService {
     }
   }
 
+  Future<List<Mission>> getVisibleMissions() async {
+    final results = await SupabaseConfig.client
+        .from('missions')
+        .select()
+        .order('created_at', ascending: false);
+    return (results as List)
+        .map((json) => Mission.fromJson(Map<String, dynamic>.from(json)))
+        .toList();
+  }
+
+  Future<Mission> approveFamilyQuest(String missionId) async {
+    final result = await SupabaseConfig.client.rpc(
+      'approve_family_quest',
+      params: {'p_mission_id': missionId},
+    );
+    return Mission.fromJson(Map<String, dynamic>.from(result as Map));
+  }
+
   Stream<List<Mission>> getMissionsStreamByUserId(String userId) {
     return SupabaseConfig.client
         .from('missions')
@@ -93,7 +116,16 @@ class MissionService {
         .map((data) => data.map((json) => Mission.fromJson(json)).toList());
   }
 
-  Future<List<Mission>> getMissionsByStatus(String userId, MissionStatus status) async {
+  Stream<List<Mission>> getVisibleMissionsStream() {
+    return SupabaseConfig.client
+        .from('missions')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .map((data) => data.map((json) => Mission.fromJson(json)).toList());
+  }
+
+  Future<List<Mission>> getMissionsByStatus(
+      String userId, MissionStatus status) async {
     try {
       dynamic query = SupabaseConfig.client
           .from('missions')
@@ -110,7 +142,8 @@ class MissionService {
     }
   }
 
-  Future<List<Mission>> getMissionsByType(String userId, MissionType type) async {
+  Future<List<Mission>> getMissionsByType(
+      String userId, MissionType type) async {
     try {
       dynamic query = SupabaseConfig.client
           .from('missions')
@@ -129,7 +162,8 @@ class MissionService {
 
   Future<Mission?> getMissionById(String id) async {
     try {
-      final data = await SupabaseService.selectSingle('missions', filters: {'id': id});
+      final data =
+          await SupabaseService.selectSingle('missions', filters: {'id': id});
       if (data == null) return null;
       return Mission.fromJson(data);
     } catch (e) {
@@ -152,14 +186,16 @@ class MissionService {
     }
   }
 
-  Future<void> updateMissionStatus(String missionId, MissionStatus status) async {
+  Future<void> updateMissionStatus(
+      String missionId, MissionStatus status) async {
     try {
       final mission = await getMissionById(missionId);
       if (mission == null) return;
 
       final updatedMission = mission.copyWith(
         status: status,
-        completedAt: status == MissionStatus.completed || status == MissionStatus.verified
+        completedAt: status == MissionStatus.completed ||
+                status == MissionStatus.verified
             ? DateTime.now()
             : mission.completedAt,
       );
@@ -220,20 +256,28 @@ class MissionService {
     String? beforePhotoUrl,
     String? afterPhotoUrl,
   }) async {
-    try {
-      final mission = await getMissionById(missionId);
-      if (mission == null) return;
-
-      final updatedMission = mission.copyWith(
-        beforePhotoUrl: beforePhotoUrl ?? mission.beforePhotoUrl,
-        afterPhotoUrl: afterPhotoUrl ?? mission.afterPhotoUrl,
-      );
-
-      await updateMission(updatedMission);
-    } catch (e) {
-      debugPrint('[MissionService] Error updating mission photos: $e');
-      rethrow;
+    final changes = <String, dynamic>{
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+      if (beforePhotoUrl != null) 'before_photo_url': beforePhotoUrl,
+      if (afterPhotoUrl != null) 'after_photo_url': afterPhotoUrl,
+    };
+    Object? lastError;
+    for (var attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await SupabaseConfig.client
+            .from('missions')
+            .update(changes)
+            .eq('id', missionId);
+        return;
+      } catch (error) {
+        lastError = error;
+        if (attempt < 3) {
+          await Future<void>.delayed(Duration(seconds: attempt));
+        }
+      }
     }
+    debugPrint('[MissionService] Error updating mission photos: $lastError');
+    throw lastError ?? StateError('Could not save the mission photo.');
   }
 
   Future<void> updateMissionVerification({
@@ -250,7 +294,9 @@ class MissionService {
         aiFeedback: aiFeedback,
         starsEarned: starsEarned,
         status: status,
-        completedAt: status == MissionStatus.verified ? DateTime.now() : mission.completedAt,
+        completedAt: status == MissionStatus.verified
+            ? DateTime.now()
+            : mission.completedAt,
       );
 
       await updateMission(updatedMission);
@@ -273,9 +319,9 @@ class MissionService {
           .select()
           .eq('email', adminEmail)
           .maybeSingle();
-      
+
       final String? adminUserId = adminData?['id'];
-      
+
       final welcomeMission = await createMission(
         userId: newUserId,
         title: 'Welcome Mission: Tie Your Shoes! 👟',
@@ -290,7 +336,8 @@ But wait... to take the "before" photo, you'll need to untie ONE of your shoes f
 Go ahead, loosen those laces, snap a "before" photo of your untied shoe, then work your magic and tie it back up for the "after" shot.
 
 Let's see what you've got, Agent!''',
-        completedState: '''Your "after" photo should show a BEAUTIFULLY tied shoe – we're talking a proper knot, not that bunny-ears-gone-wrong situation.
+        completedState:
+            '''Your "after" photo should show a BEAUTIFULLY tied shoe – we're talking a proper knot, not that bunny-ears-gone-wrong situation.
 
 Your coach will analyze both photos to verify:
 ✅ The "before" shows an untied shoe (yes, we can tell if you faked it!)
@@ -303,7 +350,8 @@ Once verified, you'll earn your first stars and be ready for real missions!''',
         assignedToUserId: newUserId,
       );
 
-      debugPrint('[MissionService] Created welcome mission for user: $newUserId');
+      debugPrint(
+          '[MissionService] Created welcome mission for user: $newUserId');
       return welcomeMission;
     } catch (e) {
       debugPrint('[MissionService] Error creating welcome mission: $e');

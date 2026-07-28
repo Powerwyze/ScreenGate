@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:taskassassin/models/user.dart';
 import 'package:taskassassin/models/handler.dart';
@@ -13,6 +15,8 @@ import 'package:taskassassin/services/ai_service.dart';
 import 'package:taskassassin/services/notification_service.dart';
 import 'package:taskassassin/services/bug_report_service.dart';
 import 'package:taskassassin/services/push_notification_service.dart';
+import 'package:taskassassin/services/screen_time_service.dart';
+import 'package:taskassassin/services/reward_service.dart';
 import 'package:taskassassin/supabase/supabase_config.dart';
 
 class AppProvider extends ChangeNotifier {
@@ -23,6 +27,7 @@ class AppProvider extends ChangeNotifier {
     _currentTab = index;
     notifyListeners();
   }
+
   late final UserService userService;
   late final HandlerService handlerService;
   late final MissionService missionService;
@@ -33,12 +38,18 @@ class AppProvider extends ChangeNotifier {
   late final AIService aiService;
   late final NotificationService notificationService;
   late final BugReportService bugReportService;
-  
+
   User? _currentUser;
   Handler? _currentHandler;
   List<Mission> _missions = [];
   bool _isInitialized = false;
-  bool _profileResolved = false; // whether we've checked if the user profile exists
+  bool _profileResolved =
+      false; // whether we've checked if the user profile exists
+  bool _isPairingChild = false;
+  StreamSubscription<List<Mission>>? _missionSubscription;
+  StreamSubscription<int>? _rewardSubscription;
+  int _availableRewardMinutes = 0;
+  Timer? _refreshTimer;
 
   User? get currentUser => _currentUser;
   Handler? get currentHandler => _currentHandler;
@@ -48,13 +59,20 @@ class AppProvider extends ChangeNotifier {
   bool get hasCompletedOnboarding => _currentUser != null;
   bool get profileResolved => _profileResolved;
   bool get isAuthenticated => SupabaseConfig.auth.currentUser != null;
+  bool get isPairingChild => _isPairingChild;
+  int get availableRewardMinutes => _availableRewardMinutes;
+
+  void setPairingChild(bool value) {
+    _isPairingChild = value;
+    notifyListeners();
+  }
 
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     try {
       // Initialize storage first
-      
+
       // Initialize all services (synchronous - no risk of blocking)
       userService = UserService();
       missionService = MissionService();
@@ -87,6 +105,13 @@ class AppProvider extends ChangeNotifier {
         try {
           final user = data.session?.user;
           if (user == null) {
+            await _missionSubscription?.cancel();
+            _missionSubscription = null;
+            await _rewardSubscription?.cancel();
+            _rewardSubscription = null;
+            _availableRewardMinutes = 0;
+            _refreshTimer?.cancel();
+            _refreshTimer = null;
             _currentUser = null;
             _currentHandler = null;
             _missions = [];
@@ -114,33 +139,42 @@ class AppProvider extends ChangeNotifier {
   /// Load current user and their handler
   Future<void> _loadCurrentUserAndHandler() async {
     if (SupabaseConfig.auth.currentUser == null) return;
-    
+
     try {
       _currentUser = await userService.getCurrentUser();
-      
+
       if (_currentUser != null) {
         // Get handler (synchronous - no async needed)
-        _currentHandler = handlerService.getHandlerById(_currentUser!.selectedHandlerId);
-        
+        _currentHandler =
+            handlerService.getHandlerById(_currentUser!.selectedHandlerId);
+
         // Fallback to default handler if not found
         if (_currentHandler == null) {
           _currentHandler = handlerService.getDefaultHandler();
-          debugPrint('[AppProvider] Handler "${_currentUser!.selectedHandlerId}" not found, using default: ${_currentHandler!.id}');
-          
+          debugPrint(
+              '[AppProvider] Handler "${_currentUser!.selectedHandlerId}" not found, using default: ${_currentHandler!.id}');
+
           // Update the local user object with the default handler
           // so we don't get stuck in a loop
-          _currentUser = _currentUser!.copyWith(selectedHandlerId: _currentHandler!.id);
-          
+          _currentUser =
+              _currentUser!.copyWith(selectedHandlerId: _currentHandler!.id);
+
           // Try to persist this to the database (fire and forget - don't block)
           userService.updateUser(_currentUser!).catchError((e) {
             debugPrint('[AppProvider] Failed to persist handler fix: $e');
           });
         }
-        
+
         // Load missions (don't let this block initialization either)
         loadMissions().catchError((e) {
           debugPrint('[AppProvider] Failed to load missions: $e');
         });
+        _subscribeToMissions();
+        _subscribeToRewards();
+        _startRefreshFallback();
+        ScreenTimeService()
+            .registerCurrentDevice(role: _currentUser!.accountRole.name)
+            .catchError((e) => debugPrint('[Device] Registration failed: $e'));
       }
     } catch (e) {
       debugPrint('[AppProvider] Error loading user/handler: $e');
@@ -153,25 +187,28 @@ class AppProvider extends ChangeNotifier {
     required String codename,
     required String handlerId,
     required String lifeGoals,
+    required AccountRole accountRole,
   }) async {
     try {
       final supaUser = SupabaseConfig.auth.currentUser;
       if (supaUser == null) {
-        throw Exception('No authenticated user. Please sign in before creating a profile.');
+        throw Exception(
+            'No authenticated user. Please sign in before creating a profile.');
       }
-      
+
       final authEmail = supaUser.email ?? '';
       _currentUser = await userService.createUser(
         codename: codename,
         email: authEmail,
         selectedHandlerId: handlerId,
         lifeGoals: lifeGoals,
+        accountRole: accountRole,
       );
-      
+
       // Get handler (synchronous)
-      _currentHandler = handlerService.getHandlerById(handlerId) ?? 
-                        handlerService.getDefaultHandler();
-      
+      _currentHandler = handlerService.getHandlerById(handlerId) ??
+          handlerService.getDefaultHandler();
+
       notifyListeners();
     } catch (e) {
       debugPrint('[AppProvider] Onboarding error: $e');
@@ -182,37 +219,57 @@ class AppProvider extends ChangeNotifier {
   Future<void> loadMissions() async {
     if (_currentUser == null) return;
     try {
-      final fetchedMissions = await missionService.getMissionsByUserId(_currentUser!.id);
+      final fetchedMissions = await missionService.getVisibleMissions();
 
-      final cutoff = DateTime.now().subtract(const Duration(days: 7));
-      final toDelete = <Mission>[];
-
-      for (final mission in fetchedMissions) {
-        final lastUpdated = mission.completedAt ?? mission.updatedAt;
-        final isExecuted = mission.status == MissionStatus.completed || mission.status == MissionStatus.verified;
-        final isFailed = mission.status == MissionStatus.failed;
-
-        if ((isFailed || isExecuted) && lastUpdated.isBefore(cutoff)) {
-          toDelete.add(mission);
-        }
-      }
-
-      if (toDelete.isNotEmpty) {
-        await Future.wait(toDelete.map((mission) async {
-          try {
-            await missionService.deleteMission(mission.id);
-          } catch (e) {
-            debugPrint('[AppProvider] Failed to auto-delete mission ${mission.id}: $e');
-          }
-        }));
-      }
-
-      _missions = fetchedMissions.where((m) => toDelete.every((d) => d.id != m.id)).toList();
+      _missions = fetchedMissions;
       _missions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       notifyListeners();
     } catch (e) {
       debugPrint('[AppProvider] Error loading missions: $e');
     }
+  }
+
+  void _subscribeToMissions() {
+    _missionSubscription?.cancel();
+    _missionSubscription = missionService.getVisibleMissionsStream().listen(
+      (missions) {
+        _missions = missions;
+        notifyListeners();
+      },
+      onError: (Object error) {
+        debugPrint('[AppProvider] Mission stream error: $error');
+      },
+    );
+  }
+
+  void _subscribeToRewards() {
+    _rewardSubscription?.cancel();
+    _rewardSubscription = RewardService().watchAvailableMinutes().listen(
+      (minutes) {
+        _availableRewardMinutes = minutes;
+        notifyListeners();
+      },
+      onError: (Object error) {
+        debugPrint('[AppProvider] Reward stream error: $error');
+      },
+    );
+  }
+
+  void _startRefreshFallback() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 8), (_) async {
+      if (_currentUser == null) return;
+      await loadMissions();
+      try {
+        final minutes = await RewardService().getAvailableMinutes();
+        if (_availableRewardMinutes != minutes) {
+          _availableRewardMinutes = minutes;
+          notifyListeners();
+        }
+      } catch (error) {
+        debugPrint('[AppProvider] Reward refresh failed: $error');
+      }
+    });
   }
 
   Future<void> refreshUser() async {
@@ -225,13 +282,22 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> reloadProfile() async {
+    _profileResolved = false;
+    notifyListeners();
+    await _loadCurrentUserAndHandler();
+    _profileResolved = true;
+    notifyListeners();
+  }
+
   Future<void> updateHandler(String handlerId) async {
     if (_currentUser == null) return;
     try {
-      await userService.updateUser(_currentUser!.copyWith(selectedHandlerId: handlerId));
+      await userService
+          .updateUser(_currentUser!.copyWith(selectedHandlerId: handlerId));
       _currentUser = await userService.getUserById(_currentUser!.id);
-      _currentHandler = handlerService.getHandlerById(handlerId) ?? 
-                        handlerService.getDefaultHandler();
+      _currentHandler = handlerService.getHandlerById(handlerId) ??
+          handlerService.getDefaultHandler();
       notifyListeners();
     } catch (e) {
       debugPrint('[AppProvider] Error updating handler: $e');
@@ -251,19 +317,32 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> approveMission(String missionId) async {
+    final mission = await missionService.approveFamilyQuest(missionId);
+    await updateMission(mission);
+  }
+
   Future<void> signOut() async {
     try {
       // Delete FCM token before signing out (silently fail if push notifications aren't available)
       try {
         await PushNotificationService().deleteToken();
       } catch (e) {
-        debugPrint('[AppProvider] Failed to delete FCM token (non-blocking): $e');
+        debugPrint(
+            '[AppProvider] Failed to delete FCM token (non-blocking): $e');
       }
-      
+
+      await _missionSubscription?.cancel();
+      _missionSubscription = null;
+      await _rewardSubscription?.cancel();
+      _rewardSubscription = null;
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
       await SupabaseConfig.auth.signOut();
       _currentUser = null;
       _currentHandler = null;
       _missions = [];
+      _availableRewardMinutes = 0;
       notifyListeners();
     } catch (e) {
       debugPrint('[AppProvider] Sign out error: $e');

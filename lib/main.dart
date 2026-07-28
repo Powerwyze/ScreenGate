@@ -22,7 +22,7 @@ import 'package:taskassassin/services/push_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
     await SupabaseConfig.initialize();
     debugPrint('[Supabase] Initialized successfully');
@@ -36,7 +36,7 @@ void main() async {
   }).catchError((e) {
     debugPrint('[Push Notifications] Initialization error (non-blocking): $e');
   });
-  
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => AppProvider()..initialize(),
@@ -54,11 +54,11 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late final GoRouter _router;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Access the provider properly since MyApp is now a child of ChangeNotifierProvider
     final appProvider = Provider.of<AppProvider>(context, listen: false);
 
@@ -75,6 +75,8 @@ class _MyAppState extends State<MyApp> {
 
         // 1. If app is not initialized yet, don't redirect (let the loading screen handle it)
         if (!isInitialized) return null;
+
+        if (appProvider.isPairingChild) return null;
 
         // 2. If not logged in, force to auth
         if (!isLoggedIn) {
@@ -133,13 +135,17 @@ class _MyAppState extends State<MyApp> {
                   mission = Mission.fromJson(extra);
                 } else if (extra is Map) {
                   // Gracefully handle loosely typed maps from deep links or reloads
-                  mission = Mission.fromJson(extra.map((key, value) => MapEntry(key.toString(), value)));
+                  mission = Mission.fromJson(extra
+                      .map((key, value) => MapEntry(key.toString(), value)));
                 }
 
                 if (mission == null) {
-                  debugPrint('[Router] Missing or invalid mission payload for /mission-detail');
+                  debugPrint(
+                      '[Router] Missing or invalid mission payload for /mission-detail');
                   return const Scaffold(
-                    body: Center(child: Text('Mission details unavailable. Please reopen from Missions.')),
+                    body: Center(
+                        child: Text(
+                            'Quest details unavailable. Please reopen it from Quests.')),
                   );
                 }
 
@@ -178,9 +184,12 @@ class _MyAppState extends State<MyApp> {
                   return DirectMessageScreen(peer: extra);
                 }
 
-                debugPrint('[Router] Missing or invalid user for /direct-message');
+                debugPrint(
+                    '[Router] Missing or invalid user for /direct-message');
                 return const Scaffold(
-                  body: Center(child: Text('Chat unavailable. Please reopen from your friends list.')),
+                  body: Center(
+                      child: Text(
+                          'Chat unavailable. Please reopen from your friends list.')),
                 );
               },
             ),
@@ -213,7 +222,7 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
-      themeMode: ThemeMode.dark,
+      themeMode: ThemeMode.light,
       routerConfig: _router,
     );
   }
@@ -240,106 +249,39 @@ class GlobalBottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
-        return Container(
-          decoration: BoxDecoration(
-            color: CyberpunkColors.surface,
-            border: Border(
-              top: BorderSide(
-                color: CyberpunkColors.border,
-                width: 1,
-              ),
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _BottomNavItem(
-                    icon: Icons.grid_view_rounded,
-                    label: 'HOME',
-                    isSelected: provider.currentTab == 0,
-                    onTap: () {
-                      provider.setCurrentTab(0);
-                      context.go('/home');
-                    },
-                  ),
-                  _BottomNavItem(
-                    icon: Icons.chat_bubble_outline,
-                    label: 'COACH',
-                    isSelected: provider.currentTab == 1,
-                    onTap: () {
-                      provider.setCurrentTab(1);
-                      context.go('/home');
-                    },
-                  ),
-                  _BottomNavItem(
-                    icon: Icons.public,
-                    label: 'SOCIAL',
-                    isSelected: provider.currentTab == 2,
-                    onTap: () {
-                      provider.setCurrentTab(2);
-                      context.go('/home');
-                    },
-                  ),
-                  _BottomNavItem(
-                    icon: Icons.person_outline,
-                    label: 'ME',
-                    isSelected: provider.currentTab == 3,
-                    onTap: () {
-                      provider.setCurrentTab(3);
-                      context.go('/home');
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
+        final isParent =
+            provider.currentUser?.accountRole == AccountRole.parent;
+        final destinations = isParent
+            ? const [
+                (Icons.home_rounded, 'Home'),
+                (Icons.checklist_rounded, 'Quests'),
+                (Icons.family_restroom_rounded, 'Family'),
+                (Icons.settings_rounded, 'Settings'),
+              ]
+            : const [
+                (Icons.today_rounded, 'Today'),
+                (Icons.stars_rounded, 'Rewards'),
+                (Icons.insights_rounded, 'Progress'),
+                (Icons.settings_rounded, 'Settings'),
+              ];
+        return NavigationBar(
+          height: 70,
+          backgroundColor: Colors.white,
+          indicatorColor: const Color(0xFFDDF4EE),
+          selectedIndex: provider.currentTab.clamp(0, 3),
+          onDestinationSelected: (index) {
+            provider.setCurrentTab(index);
+            context.go('/home');
+          },
+          destinations: destinations
+              .map((item) => NavigationDestination(
+                    icon: Icon(item.$1),
+                    selectedIcon: Icon(item.$1, color: const Color(0xFF0B8F87)),
+                    label: item.$2,
+                  ))
+              .toList(),
         );
       },
-    );
-  }
-}
-
-class _BottomNavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isSelected ? CyberpunkColors.neonGreen : CyberpunkColors.textMuted;
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 70,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: context.textStyles.labelSmall!.copyWith(
-                color: color,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -1,32 +1,1002 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:taskassassin/models/mission.dart';
+import 'package:taskassassin/models/user.dart';
 import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/screens/dashboard_screen.dart';
-import 'package:taskassassin/screens/handler_chat_screen.dart';
-import 'package:taskassassin/screens/social_screen.dart';
-import 'package:taskassassin/screens/profile_screen.dart';
+import 'package:taskassassin/services/family_service.dart';
+import 'package:taskassassin/services/screen_time_service.dart';
 
-class MainScreen extends StatefulWidget {
+const _ink = Color(0xFF17324D);
+const _teal = Color(0xFF0B8F87);
+const _mint = Color(0xFFDDF4EE);
+const _sun = Color(0xFFFFD166);
+const _coral = Color(0xFFFF7A66);
+const _paper = Color(0xFFF7FAF9);
+
+class MainScreen extends StatelessWidget {
   const MainScreen({super.key});
-
-  @override
-  State<MainScreen> createState() => _MainScreenState();
-}
-
-class _MainScreenState extends State<MainScreen> {
-  final _tabs = const [
-    DashboardScreen(),
-    HandlerChatScreen(),
-    SocialScreen(),
-    ProfileScreen(),
-  ];
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
-      builder: (context, provider, _) => Scaffold(
-        body: _tabs[provider.currentTab],
+      builder: (context, provider, _) {
+        final user = provider.currentUser;
+        if (user == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final tabs = user.accountRole == AccountRole.parent
+            ? const [
+                _ParentHome(),
+                _QuestList(isParent: true),
+                _FamilyScreen(),
+                _SettingsScreen(),
+              ]
+            : const [
+                _ChildHome(),
+                _RewardsScreen(),
+                _ProgressScreen(),
+                _SettingsScreen(),
+              ];
+        final index = provider.currentTab.clamp(0, tabs.length - 1);
+        return ColoredBox(color: _paper, child: tabs[index]);
+      },
+    );
+  }
+}
+
+class _ParentHome extends StatelessWidget {
+  const _ParentHome();
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final name = provider.currentUser!.codename;
+    final pending = provider.missions
+        .where((mission) => mission.status == MissionStatus.completed)
+        .length;
+
+    return _Page(
+      title: 'Hi, $name',
+      subtitle: 'Your family at a glance',
+      trailing: _RoundIcon(
+        icon: Icons.notifications_none_rounded,
+        onTap: () => context.push('/notifications'),
       ),
+      children: [
+        FutureBuilder<List<FamilyChild>>(
+          future: FamilyService().getChildren(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const _HeroPanel(
+                icon: Icons.sync_rounded,
+                title: 'Checking your family',
+                body: 'Loading the phones connected to Questime.',
+                action: 'LOADING',
+                onTap: null,
+              );
+            }
+            final children = snapshot.data ?? const <FamilyChild>[];
+            if (children.isEmpty) {
+              return _HeroPanel(
+                icon: Icons.child_care_rounded,
+                title: 'Add your child',
+                body:
+                    'Pair their phone to start quests and screen-time rewards.',
+                action: 'PAIR A PHONE',
+                onTap: () => _showPairingSoon(context),
+              );
+            }
+            final child = children.first;
+            final device = child.devices.isEmpty ? null : child.devices.first;
+            final platform =
+                device?.platform == 'android' ? 'Android' : 'iPhone';
+            return _HeroPanel(
+              icon: Icons.check_circle_rounded,
+              title: '${child.name} is connected',
+              body: device == null
+                  ? 'Their phone is paired and ready for a quest.'
+                  : '$platform connected. Send ${child.name} a quest to get started.',
+              action: 'CREATE A QUEST',
+              onTap: () => context.push('/create-mission'),
+            );
+          },
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: _Metric(
+                color: _mint,
+                icon: Icons.timer_outlined,
+                value: '--',
+                label: 'time left',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _Metric(
+                color: const Color(0xFFFFF1D0),
+                icon: Icons.task_alt_rounded,
+                value: '${provider.missions.length}',
+                label: 'quests today',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 28),
+        _SectionTitle(
+          title: 'Needs your attention',
+          action: pending == 0 ? null : '$pending waiting',
+        ),
+        const SizedBox(height: 12),
+        _AttentionRow(
+          icon: pending == 0 ? Icons.check_circle_rounded : Icons.hourglass_top,
+          color: pending == 0 ? _teal : _coral,
+          title: pending == 0 ? 'All caught up' : '$pending quests to approve',
+          subtitle: pending == 0
+              ? 'Completed quests will appear here.'
+              : 'Review completed quests and award time.',
+        ),
+        const SizedBox(height: 28),
+        const _SectionTitle(title: 'Quick actions'),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _ActionTile(
+                icon: Icons.add_task_rounded,
+                label: 'New quest',
+                color: _teal,
+                onTap: () => _showLimitsDialog(context),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _ActionTile(
+                icon: Icons.schedule_rounded,
+                label: 'Set limits',
+                color: _coral,
+                onTap: null,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ChildHome extends StatelessWidget {
+  const _ChildHome();
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final missions = provider.missions
+        .where((mission) => mission.status != MissionStatus.verified)
+        .toList();
+    return _Page(
+      title: 'Hey, ${provider.currentUser!.codename}!',
+      subtitle: missions.isEmpty
+          ? 'You are ready for a new quest.'
+          : 'Pick one quest to start.',
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _ink,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('PLAY TIME',
+                        style: TextStyle(
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w700)),
+                    SizedBox(height: 8),
+                    Text('${provider.availableRewardMinutes} min',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 36,
+                            fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.sports_esports_rounded, color: _sun, size: 52),
+            ],
+          ),
+        ),
+        const SizedBox(height: 28),
+        const _SectionTitle(title: "Today's quests"),
+        const SizedBox(height: 12),
+        if (missions.isEmpty)
+          const _EmptyState(
+            icon: Icons.celebration_rounded,
+            title: 'No quests yet',
+            body: 'Ask your parent to send your first quest.',
+          )
+        else
+          ...missions.take(4).map((mission) => _QuestRow(mission: mission)),
+      ],
+    );
+  }
+}
+
+class _QuestList extends StatelessWidget {
+  final bool isParent;
+  const _QuestList({required this.isParent});
+
+  @override
+  Widget build(BuildContext context) {
+    final missions = context.watch<AppProvider>().missions;
+    return _Page(
+      title: isParent ? 'Quests' : 'Today',
+      subtitle: isParent
+          ? 'Small wins earn meaningful time.'
+          : 'Finish a quest. Earn your time.',
+      trailing: isParent
+          ? _RoundIcon(
+              icon: Icons.add_rounded,
+              onTap: () => context.push('/create-mission'))
+          : null,
+      children: [
+        if (missions.isEmpty)
+          _EmptyState(
+            icon: Icons.checklist_rounded,
+            title: isParent ? 'Make the first quest' : 'Nothing here yet',
+            body: isParent
+                ? 'Choose one clear task your child can finish today.'
+                : 'Your parent will add a quest for you.',
+            action: isParent ? 'CREATE A QUEST' : null,
+            onTap: isParent ? () => context.push('/create-mission') : null,
+          )
+        else
+          ...missions.map((mission) => _QuestRow(mission: mission)),
+      ],
+    );
+  }
+}
+
+class _FamilyScreen extends StatelessWidget {
+  const _FamilyScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return _Page(
+      title: 'Family',
+      subtitle: 'The phones connected to Questime',
+      children: [
+        FutureBuilder<List<FamilyChild>>(
+          future: FamilyService().getChildren(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final children = snapshot.data!;
+            if (children.isEmpty) {
+              return const _EmptyState(
+                icon: Icons.family_restroom_rounded,
+                title: 'Add your child',
+                body: 'Install Questime on their phone, then pair it here.',
+              );
+            }
+            return Column(
+              children: children.map((child) {
+                final device =
+                    child.devices.isEmpty ? null : child.devices.first;
+                final platform =
+                    device?.platform == 'android' ? 'Android' : 'iPhone';
+                return _AttentionRow(
+                  icon: device?.platform == 'android'
+                      ? Icons.android_rounded
+                      : Icons.phone_iphone_rounded,
+                  color: device?.screenTimeAuthorized == true ? _teal : _coral,
+                  title: child.name,
+                  subtitle: device == null
+                      ? 'Paired, waiting for phone details'
+                      : '$platform • ${device.screenTimeAuthorized ? 'Screen Time ready' : 'Needs Screen Time setup'}',
+                );
+              }).toList(),
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () => _showPairingSoon(context),
+            icon: const Icon(Icons.link_rounded),
+            label: const Text('PAIR A CHILD PHONE'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RewardsScreen extends StatelessWidget {
+  const _RewardsScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final minutes = context.watch<AppProvider>().availableRewardMinutes;
+    return _Page(
+      title: 'Rewards',
+      subtitle: 'Time you earned by finishing quests',
+      children: [
+        _EmptyState(
+          icon:
+              minutes > 0 ? Icons.sports_esports_rounded : Icons.stars_rounded,
+          title: minutes > 0 ? '$minutes minutes ready' : 'No play time yet',
+          body: minutes > 0
+              ? 'Your approved quest time is ready to use.'
+              : 'Finish a quest and ask your parent to approve it.',
+        ),
+      ],
+    );
+  }
+}
+
+class _ProgressScreen extends StatelessWidget {
+  const _ProgressScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<AppProvider>().currentUser!;
+    return _Page(
+      title: 'My progress',
+      subtitle: 'Every finished quest counts',
+      children: [
+        Row(
+          children: [
+            Expanded(
+                child: _Metric(
+                    color: _mint,
+                    icon: Icons.star_rounded,
+                    value: '${user.totalStars}',
+                    label: 'stars')),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _Metric(
+                    color: const Color(0xFFFFE5DF),
+                    icon: Icons.local_fire_department_rounded,
+                    value: '${user.currentStreak}',
+                    label: 'day streak')),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _SettingsScreen extends StatelessWidget {
+  const _SettingsScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final user = provider.currentUser!;
+    return _Page(
+      title: 'Settings',
+      subtitle: user.email,
+      children: [
+        _SettingsRow(
+            icon: Icons.person_outline_rounded,
+            label: 'Name',
+            value: user.codename),
+        _SettingsRow(
+            icon: Icons.family_restroom_rounded,
+            label: 'Account',
+            value: user.accountRole == AccountRole.parent ? 'Parent' : 'Child'),
+        if (user.accountRole == AccountRole.child) ...[
+          const SizedBox(height: 20),
+          const _ScreenTimeSetup(),
+        ],
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () async {
+              await context.read<AppProvider>().signOut();
+              if (context.mounted) context.go('/auth');
+            },
+            icon: const Icon(Icons.logout_rounded),
+            label: const Text('SIGN OUT'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Page extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
+  final List<Widget> children;
+  const _Page(
+      {required this.title,
+      required this.subtitle,
+      required this.children,
+      this.trailing});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _paper,
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          style: const TextStyle(
+                              color: _ink,
+                              fontSize: 30,
+                              fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 4),
+                      Text(subtitle,
+                          style: const TextStyle(
+                              color: Color(0xFF617384), fontSize: 16)),
+                    ],
+                  ),
+                ),
+                if (trailing != null) trailing!,
+              ],
+            ),
+            const SizedBox(height: 28),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroPanel extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String body;
+  final String action;
+  final VoidCallback? onTap;
+  const _HeroPanel(
+      {required this.icon,
+      required this.title,
+      required this.body,
+      required this.action,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration:
+          BoxDecoration(color: _mint, borderRadius: BorderRadius.circular(8)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: _teal, size: 36),
+          const SizedBox(height: 16),
+          Text(title,
+              style: const TextStyle(
+                  color: _ink, fontSize: 22, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          Text(body,
+              style: const TextStyle(
+                  color: Color(0xFF4F6972), fontSize: 15, height: 1.4)),
+          const SizedBox(height: 18),
+          FilledButton(onPressed: onTap, child: Text(action)),
+        ],
+      ),
+    );
+  }
+}
+
+class _Metric extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+  final String value;
+  final String label;
+  const _Metric(
+      {required this.color,
+      required this.icon,
+      required this.value,
+      required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 126),
+      padding: const EdgeInsets.all(16),
+      decoration:
+          BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: _ink, size: 26),
+          const SizedBox(height: 18),
+          Text(value,
+              style: const TextStyle(
+                  color: _ink, fontSize: 26, fontWeight: FontWeight.w800)),
+          Text(label,
+              style: const TextStyle(color: Color(0xFF526879), fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  final String? action;
+  const _SectionTitle({required this.title, this.action});
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Expanded(
+              child: Text(title,
+                  style: const TextStyle(
+                      color: _ink, fontSize: 19, fontWeight: FontWeight.w800))),
+          if (action != null)
+            Text(action!,
+                style:
+                    const TextStyle(color: _teal, fontWeight: FontWeight.w700)),
+        ],
+      );
+}
+
+class _AttentionRow extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  const _AttentionRow(
+      {required this.icon,
+      required this.color,
+      required this.title,
+      required this.subtitle});
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFDDE5E5))),
+        child: Row(children: [
+          Icon(icon, color: color, size: 30),
+          const SizedBox(width: 14),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(title,
+                    style: const TextStyle(
+                        color: _ink, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 3),
+                Text(subtitle,
+                    style: const TextStyle(
+                        color: Color(0xFF667684), fontSize: 13)),
+              ])),
+        ]),
+      );
+}
+
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
+  const _ActionTile(
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap ??
+            () => context
+                .push(label == 'New quest' ? '/create-mission' : '/home'),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 104),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFDDE5E5))),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 18),
+            Text(label,
+                style:
+                    const TextStyle(color: _ink, fontWeight: FontWeight.w800)),
+          ]),
+        ),
+      );
+}
+
+class _QuestRow extends StatelessWidget {
+  final Mission mission;
+  const _QuestRow({required this.mission});
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final canApprove =
+        provider.currentUser?.accountRole == AccountRole.parent &&
+            mission.status == MissionStatus.completed;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () => context.push('/mission-detail', extra: mission),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFDDE5E5))),
+          child: Row(children: [
+            Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                    color: _mint, borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.check_rounded, color: _teal)),
+            const SizedBox(width: 14),
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(mission.title,
+                      style: const TextStyle(
+                          color: _ink,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 3),
+                  Text(
+                      '${mission.rewardMinutes} min reward • ${mission.status.name}',
+                      style: const TextStyle(color: Color(0xFF667684))),
+                ])),
+            if (canApprove)
+              FilledButton(
+                onPressed: () async {
+                  await context.read<AppProvider>().approveMission(mission.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content:
+                          Text('${mission.rewardMinutes} minutes approved'),
+                    ));
+                  }
+                },
+                child: const Text('APPROVE'),
+              )
+            else
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF8A9AA6)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScreenTimeSetup extends StatefulWidget {
+  const _ScreenTimeSetup();
+  @override
+  State<_ScreenTimeSetup> createState() => _ScreenTimeSetupState();
+}
+
+class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
+  late Future<ScreenTimeStatus> _status = ScreenTimeService().status();
+
+  Future<void> _enable() async {
+    setState(() => _status = ScreenTimeService().requestAuthorization());
+    try {
+      await _status;
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Screen Time setup failed: $error')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<ScreenTimeStatus>(
+        future: _status,
+        builder: (context, snapshot) {
+          final status = snapshot.data;
+          return _EmptyState(
+            icon: status?.authorized == true
+                ? Icons.verified_user_rounded
+                : Icons.phonelink_lock_rounded,
+            title: status?.authorized == true
+                ? 'Screen Time is ready'
+                : 'Turn on Screen Time',
+            body: status?.platform == 'android'
+                ? 'Android support is detected. App blocking will use Android accessibility setup.'
+                : 'A parent must approve Apple Family Controls on this iPhone.',
+            action: status?.authorized == true ? null : 'TURN ON',
+            onTap: status?.authorized == true ? null : _enable,
+          );
+        },
+      );
+}
+
+class _EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String body;
+  final String? action;
+  final VoidCallback? onTap;
+  const _EmptyState(
+      {required this.icon,
+      required this.title,
+      required this.body,
+      this.action,
+      this.onTap});
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFDDE5E5))),
+        child: Column(children: [
+          Icon(icon, size: 48, color: _teal),
+          const SizedBox(height: 16),
+          Text(title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: _ink, fontSize: 20, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          Text(body,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF667684), height: 1.4)),
+          if (action != null) ...[
+            const SizedBox(height: 20),
+            FilledButton(onPressed: onTap, child: Text(action!))
+          ],
+        ]),
+      );
+}
+
+class _SettingsRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _SettingsRow(
+      {required this.icon, required this.label, required this.value});
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: Color(0xFFDDE5E5)))),
+        child: Row(children: [
+          Icon(icon, color: _teal),
+          const SizedBox(width: 14),
+          Expanded(
+              child: Text(label,
+                  style: const TextStyle(
+                      color: _ink, fontSize: 16, fontWeight: FontWeight.w700))),
+          Text(value, style: const TextStyle(color: Color(0xFF667684))),
+        ]),
+      );
+}
+
+class _RoundIcon extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _RoundIcon({required this.icon, required this.onTap});
+  @override
+  Widget build(BuildContext context) =>
+      IconButton.filledTonal(onPressed: onTap, icon: Icon(icon, color: _ink));
+}
+
+void _showPairingSoon(BuildContext context) {
+  showDialog<void>(
+    context: context,
+    builder: (_) => const _PairingCodeDialog(),
+  );
+}
+
+void _showLimitsDialog(BuildContext context) {
+  showDialog<void>(context: context, builder: (_) => const _LimitsDialog());
+}
+
+class _LimitsDialog extends StatefulWidget {
+  const _LimitsDialog();
+  @override
+  State<_LimitsDialog> createState() => _LimitsDialogState();
+}
+
+class _LimitsDialogState extends State<_LimitsDialog> {
+  late final Future<List<FamilyChild>> _children =
+      FamilyService().getChildren();
+  FamilyChild? _child;
+  double _dailyLimit = 90;
+  int _reward = 15;
+  bool _saving = false;
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Screen time limits'),
+        content: FutureBuilder<List<FamilyChild>>(
+          future: _children,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const CircularProgressIndicator();
+            }
+            final children = snapshot.data!;
+            _child ??= children.isEmpty ? null : children.first;
+            if (children.isEmpty) {
+              return const Text('Pair a child phone first.');
+            }
+            return StatefulBuilder(builder: (context, update) {
+              return Column(mainAxisSize: MainAxisSize.min, children: [
+                DropdownButtonFormField<FamilyChild>(
+                  initialValue: _child,
+                  decoration: const InputDecoration(labelText: 'Child'),
+                  items: children
+                      .map((child) => DropdownMenuItem(
+                          value: child, child: Text(child.name)))
+                      .toList(),
+                  onChanged: (value) => update(() => _child = value),
+                ),
+                const SizedBox(height: 18),
+                Text('${_dailyLimit.round()} minutes each day'),
+                Slider(
+                  value: _dailyLimit,
+                  min: 0,
+                  max: 240,
+                  divisions: 16,
+                  label: '${_dailyLimit.round()} min',
+                  onChanged: (value) => update(() => _dailyLimit = value),
+                ),
+                DropdownButtonFormField<int>(
+                  initialValue: _reward,
+                  decoration:
+                      const InputDecoration(labelText: 'Default quest reward'),
+                  items: const [10, 15, 20, 30, 45, 60]
+                      .map((value) => DropdownMenuItem(
+                          value: value, child: Text('$value minutes')))
+                      .toList(),
+                  onChanged: (value) => update(() => _reward = value ?? 15),
+                ),
+              ]);
+            });
+          },
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('CANCEL')),
+          FilledButton(
+            onPressed: _saving || _child == null
+                ? null
+                : () async {
+                    setState(() => _saving = true);
+                    await FamilyService().saveScreenTimeRule(
+                      childUserId: _child!.id,
+                      dailyLimitMinutes: _dailyLimit.round(),
+                      rewardMinutes: _reward,
+                    );
+                    if (context.mounted) Navigator.pop(context);
+                  },
+            child: const Text('SAVE'),
+          ),
+        ],
+      );
+}
+
+class _PairingCodeDialog extends StatefulWidget {
+  const _PairingCodeDialog();
+
+  @override
+  State<_PairingCodeDialog> createState() => _PairingCodeDialogState();
+}
+
+class _PairingCodeDialogState extends State<_PairingCodeDialog> {
+  late Future<FamilyPairingCode> _code;
+
+  @override
+  void initState() {
+    super.initState();
+    _code = FamilyService().createPairingCode();
+  }
+
+  void _refresh() {
+    setState(() => _code = FamilyService().createPairingCode());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      title: const Text(
+        'Pair the child phone',
+        style: TextStyle(color: _ink, fontWeight: FontWeight.w800),
+      ),
+      content: FutureBuilder<FamilyPairingCode>(
+        future: _code,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const SizedBox(
+              height: 150,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasError || snapshot.data == null) {
+            return SizedBox(
+              height: 150,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Could not make a code.',
+                      style: TextStyle(color: _ink)),
+                  const SizedBox(height: 12),
+                  TextButton(
+                      onPressed: _refresh, child: const Text('TRY AGAIN')),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Type this code on the Child Phone:',
+                style: TextStyle(color: Color(0xFF667684)),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                decoration: BoxDecoration(
+                  color: _mint,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  snapshot.data!.code,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 36,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 7,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'This code works once and expires in 15 minutes.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF667684), fontSize: 13),
+              ),
+            ],
+          );
+        },
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context), child: const Text('DONE')),
+      ],
     );
   }
 }

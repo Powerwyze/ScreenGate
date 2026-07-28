@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:taskassassin/network/platform_http_client.dart';
 
 /// Supabase configuration for Questime.
 ///
@@ -9,19 +10,20 @@ import 'package:flutter/foundation.dart';
 class SupabaseConfig {
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://gbwzsxjromwefuopvzfg.supabase.co',
+    defaultValue: 'https://foplbkcnkrolglzxayjt.supabase.co',
   );
 
   static const String anonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
     defaultValue:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdid3pzeGpyb213ZWZ1b3B2emZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5Mzc2MjAsImV4cCI6MjA4MDUxMzYyMH0._a6YlAfRXO01skwzar0A8km80OM27RRuzJKL__f8kqg',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvcGxia2Nua3JvbGdsenhheWp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NjMyOTksImV4cCI6MjEwMDIzOTI5OX0.8BjZSwm2oMcyHLFqiEEhdbqA8QPZcxvaZ1lwZ6A4Mxo',
   );
 
   static Future<void> initialize() async {
     await Supabase.initialize(
       url: supabaseUrl,
       anonKey: anonKey,
+      httpClient: createPlatformHttpClient(),
       debug: kDebugMode,
     );
   }
@@ -118,7 +120,8 @@ class SupabaseService {
     bool ignoreDuplicates = false,
   }) async {
     try {
-      final builder = SupabaseConfig.client.from(table).upsert(data, onConflict: onConflict, ignoreDuplicates: ignoreDuplicates);
+      final builder = SupabaseConfig.client.from(table).upsert(data,
+          onConflict: onConflict, ignoreDuplicates: ignoreDuplicates);
       return await builder.select();
     } catch (e) {
       throw _handleDatabaseError('upsert', table, e);

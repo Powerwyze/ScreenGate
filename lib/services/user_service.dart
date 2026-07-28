@@ -11,14 +11,16 @@ class UserService {
     required String email,
     required String selectedHandlerId,
     required String lifeGoals,
+    required AccountRole accountRole,
   }) async {
     try {
       final current = SupabaseConfig.auth.currentUser;
       if (current == null) {
-        throw Exception('No authenticated user. Please sign in before creating a profile.');
+        throw Exception(
+            'No authenticated user. Please sign in before creating a profile.');
       }
       final userId = current.id;
-      
+
       // Build the user payload and upsert in one go to avoid a pre-select
       final now = DateTime.now();
       final payload = User(
@@ -27,6 +29,7 @@ class UserService {
         email: email,
         selectedHandlerId: selectedHandlerId,
         lifeGoals: lifeGoals,
+        accountRole: accountRole,
         totalStars: 0,
         level: 1,
         currentStreak: 0,
@@ -45,23 +48,26 @@ class UserService {
       // Supabase returns the row(s) after upsert; use the first
       if (res.isNotEmpty) {
         final saved = User.fromJson(res.first);
-        debugPrint('[UserService] Upserted user during onboarding: ${saved.id}');
-        
+        debugPrint(
+            '[UserService] Upserted user during onboarding: ${saved.id}');
+
         // Create welcome mission for new user
         await _createWelcomeMissionForUser(saved.id);
-        
+
         return saved;
       }
 
       // If nothing returned, fetch once to confirm
-      final fetched = await SupabaseService.selectSingle('users', filters: {'id': userId});
+      final fetched =
+          await SupabaseService.selectSingle('users', filters: {'id': userId});
       if (fetched != null) {
         final saved = User.fromJson(fetched);
-        debugPrint('[UserService] Fetched user post-upsert during onboarding: ${saved.id}');
-        
+        debugPrint(
+            '[UserService] Fetched user post-upsert during onboarding: ${saved.id}');
+
         // Create welcome mission for new user
         await _createWelcomeMissionForUser(saved.id);
-        
+
         return saved;
       }
 
@@ -85,7 +91,8 @@ class UserService {
 
   Future<User?> getUserById(String id) async {
     try {
-      final data = await SupabaseService.selectSingle('users', filters: {'id': id});
+      final data =
+          await SupabaseService.selectSingle('users', filters: {'id': id});
       if (data == null) return null;
       return User.fromJson(data);
     } catch (e) {
@@ -97,7 +104,7 @@ class UserService {
   Stream<User?> getCurrentUserStream() {
     final userId = SupabaseConfig.auth.currentUser?.id;
     if (userId == null) return Stream.value(null);
-    
+
     return SupabaseConfig.client
         .from('users')
         .stream(primaryKey: ['id'])
@@ -145,7 +152,8 @@ class UserService {
       final user = await getUserById(userId);
       if (user == null) return;
 
-      final longestStreak = newStreak > user.longestStreak ? newStreak : user.longestStreak;
+      final longestStreak =
+          newStreak > user.longestStreak ? newStreak : user.longestStreak;
 
       await updateUser(user.copyWith(
         currentStreak: newStreak,
@@ -164,7 +172,7 @@ class UserService {
           .select()
           .ilike('codename', '%$codename%')
           .limit(20);
-      
+
       return results.map((json) => User.fromJson(json)).toList();
     } catch (e) {
       debugPrint('[UserService] Error searching users: $e');

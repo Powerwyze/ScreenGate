@@ -32,7 +32,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
   late Mission _mission;
   final _imagePicker = ImagePicker();
   bool _isVerifying = false;
-    bool _isUploading = false;
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -138,12 +138,13 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
   Future<void> _processAndUpload(XFile image, bool isBefore) async {
     try {
       setState(() => _isUploading = true);
+      final provider = context.read<AppProvider>();
 
       // Read bytes and upload using the same reliable flow as profile avatar
       final bytes = await image.readAsBytes();
       debugPrint('[MissionDetail] Picked image bytes: ${bytes.length}');
-      final provider = context.read<AppProvider>();
-      debugPrint('[MissionDetail] Platform kIsWeb=$kIsWeb, isBefore=$isBefore, missionId=${_mission.id}');
+      debugPrint(
+          '[MissionDetail] Platform kIsWeb=$kIsWeb, isBefore=$isBefore, missionId=${_mission.id}');
 
       final downloadUrl = await ImageUploadService.instance.uploadMissionPhoto(
         missionId: _mission.id,
@@ -158,13 +159,15 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
         beforePhotoUrl: isBefore ? downloadUrl : null,
         afterPhotoUrl: !isBefore ? downloadUrl : null,
       );
-      debugPrint('[MissionDetail] Firestore mission photo update complete. Refreshing mission...');
+      debugPrint(
+          '[MissionDetail] Firestore mission photo update complete. Refreshing mission...');
 
       final updated = await provider.missionService.getMissionById(_mission.id);
       if (updated != null) {
         setState(() => _mission = updated);
         await provider.updateMission(updated);
-        debugPrint('[MissionDetail] Mission refreshed. beforeUrl=${updated.beforePhotoUrl?.substring(0, math.min(updated.beforePhotoUrl?.length ?? 0, 40))}... afterUrl=${updated.afterPhotoUrl?.substring(0, math.min(updated.afterPhotoUrl?.length ?? 0, 40))}...');
+        debugPrint(
+            '[MissionDetail] Mission refreshed. beforeUrl=${updated.beforePhotoUrl?.substring(0, math.min(updated.beforePhotoUrl?.length ?? 0, 40))}... afterUrl=${updated.afterPhotoUrl?.substring(0, math.min(updated.afterPhotoUrl?.length ?? 0, 40))}...');
       }
 
       if (!isBefore && _mission.beforePhotoUrl != null) {
@@ -186,8 +189,9 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Ready for Verification?'),
-        content: const Text('Submit your mission for AI verification and earn stars!'),
+        title: const Text('Send to your parent?'),
+        content: const Text(
+            'Your parent will review both photos and approve your screen time.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -196,163 +200,43 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
           FilledButton(
             onPressed: () {
               Navigator.pop(context);
-              _verifyMission();
+              _submitForParentReview();
             },
-            child: const Text('Verify Now'),
+            child: const Text('SEND'),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _verifyMission() async {
+  Future<void> _submitForParentReview() async {
     setState(() => _isVerifying = true);
-
     final provider = context.read<AppProvider>();
-    final handler = provider.currentHandler;
-    if (handler == null) return;
-
     try {
-      final result = await provider.aiService.verifyMission(
-        missionTitle: _mission.title,
-        missionDescription: _mission.description,
-        completedState: _mission.completedState,
-        handler: handler,
-        beforePhotoUrl: _mission.beforePhotoUrl,
-        afterPhotoUrl: _mission.afterPhotoUrl,
-        beforePhotoDescription: 'Photo captured before mission',
-        afterPhotoDescription: 'Photo captured after mission completion',
+      await provider.missionService.updateMissionStatus(
+        _mission.id,
+        MissionStatus.completed,
       );
-
-      // Coerce stars to an int safely
-      int stars;
-      final rawStars = result['stars'];
-      if (rawStars is int) {
-        stars = rawStars;
-      } else if (rawStars is double) {
-        stars = rawStars.round();
-      } else if (rawStars is String) {
-        stars = int.tryParse(rawStars) ?? 3;
-      } else {
-        stars = 3;
-      }
-      final feedback = result['feedback'] as String? ?? 'Mission completed!';
-
-      // Apply pass/fail rule: anything below 4 stars is a FAIL
-      final passed = stars >= 4;
-      await provider.missionService.updateMissionVerification(
-        missionId: _mission.id,
-        starsEarned: stars,
-        aiFeedback: feedback,
-        status: passed ? MissionStatus.verified : MissionStatus.failed,
-      );
-
-      final user = provider.currentUser;
-      if (user != null && passed) {
-        await provider.userService.addStars(user.id, stars);
-        await provider.refreshUser();
-      }
 
       final updated = await provider.missionService.getMissionById(_mission.id);
-      if (updated != null) {
+      if (updated != null && mounted) {
         setState(() => _mission = updated);
         await provider.updateMission(updated);
       }
 
       if (mounted) {
-        if (passed) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Row(
-                children: [
-                  Text(handler.avatar, style: const TextStyle(fontSize: 32)),
-                  const SizedBox(width: 12),
-                  const Expanded(child: Text('Mission Verified!')),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      5,
-                      (index) => Icon(
-                        index < stars ? Icons.star : Icons.star_border,
-                        size: 32,
-                        color: Theme.of(context).colorScheme.tertiary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(feedback),
-                ],
-              ),
-              actions: [
-                FilledButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Awesome!'),
-                ),
-              ],
-            ),
-          );
-        } else {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Row(
-                children: [
-                  Text(handler.avatar, style: const TextStyle(fontSize: 32)),
-                  const SizedBox(width: 12),
-                  const Expanded(child: Text('Verification Failed')),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      5,
-                      (index) => Icon(
-                        index < stars ? Icons.star : Icons.star_border,
-                        size: 32,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(feedback),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Close'),
-                ),
-                FilledButton(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    await _redoMission();
-                  },
-                  child: const Text('Redo Now'),
-                ),
-              ],
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sent to your parent for approval.')),
+        );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error verifying mission: $e')),
+          SnackBar(content: Text('Could not send the quest: $e')),
         );
       }
     } finally {
-      setState(() => _isVerifying = false);
+      if (mounted) setState(() => _isVerifying = false);
     }
   }
 
@@ -360,14 +244,17 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
     try {
       final provider = context.read<AppProvider>();
       await provider.missionService.redoMission(_mission.id);
-      final refreshed = await provider.missionService.getMissionById(_mission.id);
+      final refreshed =
+          await provider.missionService.getMissionById(_mission.id);
       if (refreshed != null) {
         setState(() => _mission = refreshed);
         await provider.updateMission(refreshed);
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mission reset. Upload a new AFTER photo to try again.')),
+          const SnackBar(
+              content:
+                  Text('Quest reset. Add a new after photo to try again.')),
         );
       }
     } catch (e) {
@@ -380,51 +267,21 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
     }
   }
 
-  Future<void> _updateStatus(MissionStatus status) async {
-    final provider = context.read<AppProvider>();
-    await provider.missionService.updateMissionStatus(_mission.id, status);
-    final updated = await provider.missionService.getMissionById(_mission.id);
-    if (updated != null) {
-      setState(() => _mission = updated);
-      await provider.updateMission(updated);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mission Details'),
-        actions: [
-          if (_mission.status != MissionStatus.verified)
-            PopupMenuButton<MissionStatus>(
-              icon: const Icon(Icons.more_vert),
-              onSelected: _updateStatus,
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: MissionStatus.pending,
-                  child: Text('Mark as Pending'),
-                ),
-                const PopupMenuItem(
-                  value: MissionStatus.inProgress,
-                  child: Text('Mark as In Progress'),
-                ),
-                const PopupMenuItem(
-                  value: MissionStatus.failed,
-                  child: Text('Mark as Failed'),
-                ),
-              ],
-            ),
-        ],
+        title: const Text('Quest Details'),
       ),
       body: SingleChildScrollView(
         padding: AppSpacing.paddingLg,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_mission.title, style: context.textStyles.headlineMedium!.bold),
+            Text(_mission.title,
+                style: context.textStyles.headlineMedium!.bold),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -481,7 +338,10 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: const [
-                  SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                  SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2)),
                   SizedBox(width: 8),
                   Text('Uploading photo...')
                 ],
@@ -502,7 +362,9 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                       children: List.generate(
                         5,
                         (index) => Icon(
-                          index < _mission.starsEarned ? Icons.star : Icons.star_border,
+                          index < _mission.starsEarned
+                              ? Icons.star
+                              : Icons.star_border,
                           size: 32,
                           color: theme.colorScheme.tertiary,
                         ),
@@ -518,12 +380,13 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                 ),
               ),
             ],
-            if (_mission.status != MissionStatus.verified &&
+            if ((_mission.status == MissionStatus.pending ||
+                    _mission.status == MissionStatus.inProgress) &&
                 _mission.beforePhotoUrl != null &&
                 _mission.afterPhotoUrl != null) ...[
               const SizedBox(height: 24),
               FilledButton(
-                onPressed: _isVerifying ? null : _verifyMission,
+                onPressed: _isVerifying ? null : _submitForParentReview,
                 child: Padding(
                   padding: AppSpacing.paddingMd,
                   child: _isVerifying
@@ -532,7 +395,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Verify Mission'),
+                      : const Text('SEND TO PARENT'),
                 ),
               ),
             ],
@@ -540,8 +403,9 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: _redoMission,
-                icon: Icon(Icons.refresh, color: Theme.of(context).colorScheme.primary),
-                label: const Text('Redo Mission'),
+                icon: Icon(Icons.refresh,
+                    color: Theme.of(context).colorScheme.primary),
+                label: const Text('Try Quest Again'),
               ),
             ],
           ],
@@ -580,7 +444,8 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
     );
   }
 
-  Widget _buildPhotoCard(String title, String? photoUrl, VoidCallback onTap, IconData icon) {
+  Widget _buildPhotoCard(
+      String title, String? photoUrl, VoidCallback onTap, IconData icon) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -624,17 +489,22 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.7),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surface
+                      .withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(title, style: context.textStyles.labelSmall!.semiBold),
+                child:
+                    Text(title, style: context.textStyles.labelSmall!.semiBold),
               ),
             ),
             if (photoUrl != null)
               Positioned(
                 right: 8,
                 bottom: 8,
-                child: Icon(Icons.check_circle, color: Theme.of(context).colorScheme.tertiary),
+                child: Icon(Icons.check_circle,
+                    color: Theme.of(context).colorScheme.tertiary),
               ),
           ],
         ),

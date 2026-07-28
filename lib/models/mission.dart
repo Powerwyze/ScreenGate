@@ -1,4 +1,5 @@
 enum MissionType { selfAssigned, aiSuggested, friendAssigned, recurring }
+
 enum MissionStatus { pending, inProgress, completed, verified, failed }
 
 class Mission {
@@ -16,6 +17,7 @@ class Mission {
   final String? beforePhotoUrl;
   final String? afterPhotoUrl;
   final int starsEarned;
+  final int rewardMinutes;
   final String? aiFeedback;
   final String? assignedByUserId;
   final String? assignedToUserId;
@@ -36,6 +38,7 @@ class Mission {
     this.beforePhotoUrl,
     this.afterPhotoUrl,
     this.starsEarned = 0,
+    this.rewardMinutes = 15,
     this.aiFeedback,
     this.assignedByUserId,
     this.assignedToUserId,
@@ -58,17 +61,18 @@ class Mission {
         'completed_state': completedState,
         'type': type.name,
         'status': status.name,
-        'deadline': deadline?.toIso8601String(),
+        'deadline': deadline?.toUtc().toIso8601String(),
         'recurrence_pattern': recurrencePattern,
         'before_photo_url': beforePhotoUrl,
         'after_photo_url': afterPhotoUrl,
         'stars_earned': starsEarned,
+        'reward_minutes': rewardMinutes,
         'ai_feedback': aiFeedback,
         'assigned_by_user_id': assignedByUserId,
         'assigned_to_user_id': assignedToUserId,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
-        'completed_at': completedAt?.toIso8601String(),
+        'created_at': createdAt.toUtc().toIso8601String(),
+        'updated_at': updatedAt.toUtc().toIso8601String(),
+        'completed_at': completedAt?.toUtc().toIso8601String(),
       };
 
   factory Mission.fromJson(Map<String, dynamic> json) {
@@ -91,6 +95,7 @@ class Mission {
       beforePhotoUrl: json['before_photo_url'] as String?,
       afterPhotoUrl: json['after_photo_url'] as String?,
       starsEarned: json['stars_earned'] as int? ?? 0,
+      rewardMinutes: json['reward_minutes'] as int? ?? 15,
       aiFeedback: json['ai_feedback'] as String?,
       assignedByUserId: json['assigned_by_user_id'] as String?,
       assignedToUserId: json['assigned_to_user_id'] as String?,
@@ -113,6 +118,7 @@ class Mission {
     Object? beforePhotoUrl = _unset,
     Object? afterPhotoUrl = _unset,
     int? starsEarned,
+    int? rewardMinutes,
     Object? aiFeedback = _unset,
     Object? assignedByUserId = _unset,
     Object? assignedToUserId = _unset,
@@ -128,14 +134,22 @@ class Mission {
         completedState: completedState ?? this.completedState,
         type: type ?? this.type,
         status: status ?? this.status,
-        deadline: identical(deadline, _unset) ? this.deadline : deadline as DateTime?,
+        deadline:
+            identical(deadline, _unset) ? this.deadline : deadline as DateTime?,
         recurrencePattern: identical(recurrencePattern, _unset)
             ? this.recurrencePattern
             : recurrencePattern as String?,
-        beforePhotoUrl: identical(beforePhotoUrl, _unset) ? this.beforePhotoUrl : beforePhotoUrl as String?,
-        afterPhotoUrl: identical(afterPhotoUrl, _unset) ? this.afterPhotoUrl : afterPhotoUrl as String?,
+        beforePhotoUrl: identical(beforePhotoUrl, _unset)
+            ? this.beforePhotoUrl
+            : beforePhotoUrl as String?,
+        afterPhotoUrl: identical(afterPhotoUrl, _unset)
+            ? this.afterPhotoUrl
+            : afterPhotoUrl as String?,
         starsEarned: starsEarned ?? this.starsEarned,
-        aiFeedback: identical(aiFeedback, _unset) ? this.aiFeedback : aiFeedback as String?,
+        rewardMinutes: rewardMinutes ?? this.rewardMinutes,
+        aiFeedback: identical(aiFeedback, _unset)
+            ? this.aiFeedback
+            : aiFeedback as String?,
         assignedByUserId: identical(assignedByUserId, _unset)
             ? this.assignedByUserId
             : assignedByUserId as String?,
@@ -144,6 +158,8 @@ class Mission {
             : assignedToUserId as String?,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
-        completedAt: identical(completedAt, _unset) ? this.completedAt : completedAt as DateTime?,
+        completedAt: identical(completedAt, _unset)
+            ? this.completedAt
+            : completedAt as DateTime?,
       );
 }
