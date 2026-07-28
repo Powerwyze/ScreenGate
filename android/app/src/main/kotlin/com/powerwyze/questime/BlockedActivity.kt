@@ -44,6 +44,7 @@ class BlockedActivity : Activity() {
     }
 
     override fun onBackPressed() {
-        moveTaskToBack(true)
+        packageManager.getLaunchIntentForPackage(packageName)?.let(::startActivity)
+        finish()
     }
 }

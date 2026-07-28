@@ -82,7 +82,11 @@ class ScreenTimeService {
       await _channel.invokeMethod<void>('requestAuthorization');
     }
     final result = await status();
-    await registerDevice(result);
+    final configuration = await getConfiguration();
+    await registerDevice(
+      result,
+      remainingSeconds: configuration.remainingSeconds,
+    );
     return result;
   }
 
@@ -120,11 +124,17 @@ class ScreenTimeService {
   }
 
   Future<void> registerCurrentDevice({required String role}) async {
-    await registerDevice(await status(), role: role);
+    final value = await status();
+    final configuration = await getConfiguration();
+    await registerDevice(
+      value,
+      role: role,
+      remainingSeconds: configuration.remainingSeconds,
+    );
   }
 
   Future<void> registerDevice(ScreenTimeStatus value,
-      {String role = 'child'}) async {
+      {String role = 'child', int remainingSeconds = 0}) async {
     final preferences = await SharedPreferences.getInstance();
     var installationId = preferences.getString('questime_installation_id');
     installationId ??= const Uuid().v4();
@@ -136,8 +146,9 @@ class ScreenTimeService {
       'p_device_role': role,
       'p_device_name': value.deviceName,
       'p_os_version': value.osVersion,
-      'p_app_version': '1.1.0',
+      'p_app_version': '1.3.0',
       'p_screen_time_authorized': value.authorized,
+      'p_remaining_seconds': remainingSeconds,
     });
   }
 }

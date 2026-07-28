@@ -31,9 +31,17 @@ class QuestimeAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-        foregroundPackage = event.packageName?.toString()
-        if (foregroundPackage != packageName) blockerOpen = false
+        if (event == null) return
+        val observedPackage = event.packageName?.toString() ?: return
+        foregroundPackage = observedPackage
+        if (QuestimeControlStore.blockedPackages(this).contains(observedPackage) &&
+            QuestimeControlStore.remainingSeconds(this) <= 0
+        ) {
+            blockerOpen = false
+            showBlocker()
+        } else if (observedPackage != packageName) {
+            blockerOpen = false
+        }
     }
 
     override fun onInterrupt() = Unit
@@ -46,9 +54,14 @@ class QuestimeAccessibilityService : AccessibilityService() {
     private fun showBlocker() {
         if (blockerOpen) return
         blockerOpen = true
+        performGlobalAction(GLOBAL_ACTION_HOME)
         startActivity(
             Intent(this, BlockedActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                .addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS,
+                ),
         )
     }
 }

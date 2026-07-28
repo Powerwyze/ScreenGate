@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +15,13 @@ const _mint = Color(0xFFDDF4EE);
 const _sun = Color(0xFFFFD166);
 const _coral = Color(0xFFFF7A66);
 const _paper = Color(0xFFF7FAF9);
+
+String _timeText(int totalSeconds) {
+  final safeSeconds = totalSeconds.clamp(0, 86400);
+  final minutes = safeSeconds ~/ 60;
+  final seconds = safeSeconds % 60;
+  return '$minutes:${seconds.toString().padLeft(2, '0')}';
+}
 
 class MainScreen extends StatelessWidget {
   const MainScreen({super.key});
@@ -46,8 +55,43 @@ class MainScreen extends StatelessWidget {
   }
 }
 
-class _ParentHome extends StatelessWidget {
+class _ParentHome extends StatefulWidget {
   const _ParentHome();
+
+  @override
+  State<_ParentHome> createState() => _ParentHomeState();
+}
+
+class _ParentHomeState extends State<_ParentHome> {
+  late Future<List<FamilyChild>> _family = FamilyService().getChildren();
+  String? _selectedChildId;
+  Timer? _familyTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _familyTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) {
+        if (mounted) {
+          setState(() => _family = FamilyService().getChildren());
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _familyTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    await context.read<AppProvider>().refreshFamilyData();
+    if (mounted) {
+      setState(() => _family = FamilyService().getChildren());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +110,7 @@ class _ParentHome extends StatelessWidget {
       ),
       children: [
         FutureBuilder<List<FamilyChild>>(
-          future: FamilyService().getChildren(),
+          future: _family,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
               return const _HeroPanel(
@@ -88,70 +132,81 @@ class _ParentHome extends StatelessWidget {
                 onTap: () => _showPairingSoon(context),
               );
             }
-            final child = children.first;
-            final device = child.devices.isEmpty ? null : child.devices.first;
-            final platform =
-                device?.platform == 'android' ? 'Android' : 'iPhone';
-            return _HeroPanel(
-              icon: Icons.check_circle_rounded,
-              title: '${child.name} is connected',
-              body: device == null
-                  ? 'Their phone is paired and ready for a quest.'
-                  : '$platform connected. Send ${child.name} a quest to get started.',
-              action: 'CREATE A QUEST',
-              onTap: () => context.push('/create-mission'),
+            _selectedChildId ??= children.first.id;
+            final selected = children.firstWhere(
+              (child) => child.id == _selectedChildId,
+              orElse: () => children.first,
             );
-          },
-        ),
-        FutureBuilder<List<FamilyChild>>(
-          future: FamilyService().getChildren(),
-          builder: (context, snapshot) {
-            final devices = (snapshot.data ?? const <FamilyChild>[])
-                .expand(
-                    (child) => child.devices.map((device) => (child, device)))
+            final phoneCount = children.fold<int>(
+              0,
+              (count, child) => count + child.devices.length,
+            );
+            final selectedMissions = provider.missions
+                .where((mission) => mission.userId == selected.id)
                 .toList();
-            if (devices.isEmpty) return const SizedBox.shrink();
+            final minutesLeft = (selected.devices.fold<int>(
+                      0,
+                      (seconds, device) => seconds + device.remainingSeconds,
+                    ) /
+                    60)
+                .ceil();
+            final completed = selectedMissions
+                .where((mission) =>
+                    mission.status == MissionStatus.completed ||
+                    mission.status == MissionStatus.verified)
+                .length;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 20),
-                const _SectionTitle(title: 'Connected phones'),
-                const SizedBox(height: 8),
-                ...devices.map((item) => _AttentionRow(
-                      icon: item.$2.platform == 'android'
-                          ? Icons.android_rounded
-                          : Icons.phone_iphone_rounded,
-                      color: item.$2.screenTimeAuthorized ? _teal : _coral,
-                      title: '${item.$1.name} · ${item.$2.name}',
-                      subtitle: item.$2.screenTimeAuthorized
-                          ? 'Screen time ready'
-                          : 'Finish screen time setup',
-                    )),
+                _HeroPanel(
+                  icon: Icons.devices_rounded,
+                  title:
+                      '$phoneCount child ${phoneCount == 1 ? 'phone' : 'phones'} connected',
+                  body: 'Choose a child below to see their Questime activity.',
+                  action: 'REFRESH',
+                  onTap: _refresh,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: selected.id,
+                  decoration: const InputDecoration(
+                    labelText: 'Focus on',
+                    prefixIcon: Icon(Icons.child_care_rounded),
+                  ),
+                  items: children
+                      .map((child) => DropdownMenuItem(
+                            value: child.id,
+                            child: Text(child.name),
+                          ))
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => _selectedChildId = value),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Metric(
+                        color: _mint,
+                        icon: Icons.timer_outlined,
+                        value: '$minutesLeft min',
+                        label: 'time left',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _Metric(
+                        color: const Color(0xFFFFF1D0),
+                        icon: Icons.task_alt_rounded,
+                        value: '$completed/${selectedMissions.length}',
+                        label: 'quests done',
+                      ),
+                    ),
+                  ],
+                ),
               ],
             );
           },
-        ),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: _Metric(
-                color: _mint,
-                icon: Icons.timer_outlined,
-                value: '--',
-                label: 'time left',
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _Metric(
-                color: const Color(0xFFFFF1D0),
-                icon: Icons.task_alt_rounded,
-                value: '${provider.missions.length}',
-                label: 'quests today',
-              ),
-            ),
-          ],
         ),
         const SizedBox(height: 28),
         _SectionTitle(
@@ -177,7 +232,7 @@ class _ParentHome extends StatelessWidget {
                 icon: Icons.add_task_rounded,
                 label: 'New quest',
                 color: _teal,
-                onTap: () => _showLimitsDialog(context),
+                onTap: () => context.push('/create-mission'),
               ),
             ),
             const SizedBox(width: 12),
@@ -186,7 +241,7 @@ class _ParentHome extends StatelessWidget {
                 icon: Icons.schedule_rounded,
                 label: 'Set limits',
                 color: _coral,
-                onTap: null,
+                onTap: () => _showLimitsDialog(context),
               ),
             ),
           ],
@@ -228,7 +283,7 @@ class _ChildHome extends StatelessWidget {
                             color: Colors.white70,
                             fontWeight: FontWeight.w700)),
                     SizedBox(height: 8),
-                    Text('${provider.availableRewardMinutes} min',
+                    Text(_timeText(provider.availableRewardSeconds),
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 36,
@@ -323,6 +378,8 @@ class _FamilyScreen extends StatelessWidget {
                       color: _coral,
                       title: child.name,
                       subtitle: 'Paired, waiting for phone details',
+                      actionIcon: Icons.key_rounded,
+                      onAction: () => _showChildRecoveryCode(context, child),
                     )
                   ];
                 }
@@ -361,7 +418,9 @@ class _RewardsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final minutes = context.watch<AppProvider>().availableRewardMinutes;
+    final provider = context.watch<AppProvider>();
+    final minutes = provider.availableRewardMinutes;
+    final time = _timeText(provider.availableRewardSeconds);
     return _Page(
       title: 'Rewards',
       subtitle: 'Time you earned by finishing quests',
@@ -369,7 +428,7 @@ class _RewardsScreen extends StatelessWidget {
         _EmptyState(
           icon:
               minutes > 0 ? Icons.sports_esports_rounded : Icons.stars_rounded,
-          title: minutes > 0 ? '$minutes minutes ready' : 'No play time yet',
+          title: minutes > 0 ? '$time ready' : 'No play time yet',
           body: minutes > 0
               ? 'Your approved quest time is ready to use.'
               : 'Finish a quest and ask your parent to approve it.',
@@ -384,7 +443,23 @@ class _ProgressScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AppProvider>().currentUser!;
+    final provider = context.watch<AppProvider>();
+    final missions = provider.missions;
+    final finished = missions
+        .where((mission) =>
+            mission.status == MissionStatus.verified ||
+            mission.status == MissionStatus.completed ||
+            mission.status == MissionStatus.failed)
+        .toList();
+    final stars = finished.fold<double>(
+      0,
+      (total, mission) => total + mission.starsEarned,
+    );
+    final passed =
+        missions.where((mission) => mission.status == MissionStatus.verified);
+    final completionRate = missions.isEmpty
+        ? 0
+        : ((passed.length / missions.length) * 100).round();
     return _Page(
       title: 'My progress',
       subtitle: 'Every finished quest counts',
@@ -395,17 +470,45 @@ class _ProgressScreen extends StatelessWidget {
                 child: _Metric(
                     color: _mint,
                     icon: Icons.star_rounded,
-                    value: '${user.totalStars}',
+                    value: stars.toStringAsFixed(
+                        stars == stars.roundToDouble() ? 0 : 1),
                     label: 'stars')),
             const SizedBox(width: 12),
             Expanded(
                 child: _Metric(
                     color: const Color(0xFFFFE5DF),
-                    icon: Icons.local_fire_department_rounded,
-                    value: '${user.currentStreak}',
-                    label: 'day streak')),
+                    icon: Icons.task_alt_rounded,
+                    value: '${finished.length}',
+                    label: 'finished')),
           ],
         ),
+        const SizedBox(height: 12),
+        _AttentionRow(
+          icon: Icons.insights_rounded,
+          color: _teal,
+          title: '$completionRate% of quests passed',
+          subtitle: missions.isEmpty
+              ? 'Your progress will appear after your first quest.'
+              : '${passed.length} passed out of ${missions.length} total quests',
+        ),
+        if (finished.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          const _SectionTitle(title: 'Recent results'),
+          const SizedBox(height: 10),
+          ...finished.take(5).map(
+                (mission) => _AttentionRow(
+                  icon: mission.status == MissionStatus.verified
+                      ? Icons.star_rounded
+                      : Icons.hourglass_top_rounded,
+                  color:
+                      mission.status == MissionStatus.verified ? _sun : _coral,
+                  title: mission.title,
+                  subtitle: mission.starsEarned > 0
+                      ? '${mission.starsEarned.toStringAsFixed(1)} stars'
+                      : 'Waiting for approval',
+                ),
+              ),
+        ],
       ],
     );
   }
@@ -800,11 +903,33 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
   Set<String> _selectedPackages = {};
   int _remainingSeconds = 0;
   bool _loadingApps = true;
+  Timer? _balanceTimer;
 
   @override
   void initState() {
     super.initState();
     _loadConfiguration();
+    _balanceTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => _refreshBalance(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _balanceTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refreshBalance() async {
+    try {
+      final configuration = await ScreenTimeService().getConfiguration();
+      if (mounted && configuration.remainingSeconds != _remainingSeconds) {
+        setState(() => _remainingSeconds = configuration.remainingSeconds);
+      }
+    } catch (_) {
+      // The setup card remains usable while Android is changing permissions.
+    }
   }
 
   Future<void> _loadConfiguration() async {
@@ -885,7 +1010,7 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
         packages: saved,
         awardedMinutes: context.read<AppProvider>().availableRewardMinutes,
       );
-      setState(() => _selectedPackages = saved);
+      await _loadConfiguration();
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -970,7 +1095,7 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
                   padding: const EdgeInsets.all(16),
                   color: _mint,
                   child: Text(
-                    '${(_remainingSeconds / 60).ceil()} minutes available on this phone',
+                    '${_timeText(_remainingSeconds)} available on this phone',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: _ink,

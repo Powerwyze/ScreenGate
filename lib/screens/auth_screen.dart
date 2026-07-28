@@ -243,7 +243,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'v1.1.0',
+                      'v1.3.0',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: const Color(0xFF8A9AA6),
                           ),

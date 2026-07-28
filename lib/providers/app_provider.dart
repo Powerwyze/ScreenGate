@@ -49,6 +49,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
   StreamSubscription<List<Mission>>? _missionSubscription;
   StreamSubscription<int>? _rewardSubscription;
   int _availableRewardMinutes = 0;
+  int _availableRewardSeconds = 0;
   Timer? _refreshTimer;
   bool _refreshInProgress = false;
   int _missionRequest = 0;
@@ -63,6 +64,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
   bool get isAuthenticated => SupabaseConfig.auth.currentUser != null;
   bool get isPairingChild => _isPairingChild;
   int get availableRewardMinutes => _availableRewardMinutes;
+  int get availableRewardSeconds => _availableRewardSeconds;
 
   void setPairingChild(bool value) {
     _isPairingChild = value;
@@ -113,6 +115,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
             await _rewardSubscription?.cancel();
             _rewardSubscription = null;
             _availableRewardMinutes = 0;
+            _availableRewardSeconds = 0;
             _refreshTimer?.cancel();
             _refreshTimer = null;
             _currentUser = null;
@@ -265,13 +268,17 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
         final screenTime = ScreenTimeService();
         await screenTime.configureAndroid(awardedMinutes: awardedMinutes);
         final configuration = await screenTime.getConfiguration();
+        _availableRewardSeconds = configuration.remainingSeconds;
         visibleMinutes = (configuration.remainingSeconds / 60).ceil();
+        await screenTime.registerCurrentDevice(role: 'child');
       } catch (error) {
         debugPrint('[Screen Time] Allowance sync failed: $error');
       }
     }
     if (_availableRewardMinutes != visibleMinutes) {
       _availableRewardMinutes = visibleMinutes;
+      notifyListeners();
+    } else if (_currentUser?.accountRole == AccountRole.child) {
       notifyListeners();
     }
   }
@@ -377,6 +384,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
       _currentHandler = null;
       _missions = [];
       _availableRewardMinutes = 0;
+      _availableRewardSeconds = 0;
       notifyListeners();
     } catch (e) {
       debugPrint('[AppProvider] Sign out error: $e');

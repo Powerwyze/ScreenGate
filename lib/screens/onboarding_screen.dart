@@ -277,7 +277,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'v1.1.0',
+              'v1.3.0',
               style:
                   context.textStyles.bodySmall?.withColor(AppColors.textMuted),
             ),

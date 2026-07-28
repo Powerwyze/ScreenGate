@@ -11,22 +11,28 @@ class FamilyChild {
 }
 
 class QuestimeDevice {
+  final String id;
   final String platform;
   final String name;
   final bool screenTimeAuthorized;
+  final int remainingSeconds;
   final DateTime? lastSeenAt;
 
   const QuestimeDevice({
+    required this.id,
     required this.platform,
     required this.name,
     required this.screenTimeAuthorized,
+    required this.remainingSeconds,
     this.lastSeenAt,
   });
 
   factory QuestimeDevice.fromJson(Map<String, dynamic> json) => QuestimeDevice(
+        id: json['id'] as String? ?? '',
         platform: json['platform'] as String? ?? 'unknown',
         name: json['device_name'] as String? ?? 'Child phone',
         screenTimeAuthorized: json['screen_time_authorized'] as bool? ?? false,
+        remainingSeconds: (json['remaining_seconds'] as num?)?.toInt() ?? 0,
         lastSeenAt: json['last_seen_at'] == null
             ? null
             : DateTime.tryParse(json['last_seen_at'] as String),
@@ -147,8 +153,8 @@ class FamilyService {
     bool rotate = false,
   }) async {
     final result = await SupabaseConfig.client.rpc(
-      'create_child_recovery_code',
-      params: {'p_child_user_id': childUserId, 'p_rotate': rotate},
+      rotate ? 'rotate_child_recovery_code' : 'preview_child_recovery_code',
+      params: {'p_child_user_id': childUserId},
     );
     final data = Map<String, dynamic>.from(result as Map);
     return ChildRecoveryCode(
