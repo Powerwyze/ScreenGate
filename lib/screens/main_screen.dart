@@ -7,6 +7,7 @@ import 'package:taskassassin/models/mission.dart';
 import 'package:taskassassin/models/user.dart';
 import 'package:taskassassin/providers/app_provider.dart';
 import 'package:taskassassin/services/family_service.dart';
+import 'package:taskassassin/services/parent_gate_service.dart';
 import 'package:taskassassin/services/screen_time_service.dart';
 
 const _ink = Color(0xFF17324D);
@@ -551,6 +552,12 @@ class _SettingsScreen extends StatelessWidget {
           width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: () async {
+              final unlocked = await requireParentPassword(
+                context,
+                email: user.email,
+                action: 'sign out',
+              );
+              if (!unlocked || !context.mounted) return;
               await context.read<AppProvider>().signOut();
               if (context.mounted) context.go('/auth');
             },
@@ -974,6 +981,15 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
 
   Future<void> _chooseApps() async {
     if (_apps.isEmpty) return;
+    final user = context.read<AppProvider>().currentUser;
+    if (user == null) return;
+    final unlocked = await requireParentPassword(
+      context,
+      email: user.email,
+      action: 'change blocked apps',
+    );
+    if (!unlocked || !mounted) return;
+
     final draft = Set<String>.from(_selectedPackages);
     final saved = await showDialog<Set<String>>(
       context: context,

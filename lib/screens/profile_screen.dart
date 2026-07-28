@@ -8,6 +8,7 @@ import 'package:taskassassin/models/achievement.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:taskassassin/services/image_upload_service.dart';
 import 'package:taskassassin/services/mission_service.dart';
+import 'package:taskassassin/services/parent_gate_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -44,7 +45,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (source == null) return;
     try {
-      final picked = await _picker.pickImage(source: source, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
+      final picked = await _picker.pickImage(
+          source: source, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
       if (picked == null) return;
       setState(() => _uploadingAvatar = true);
 
@@ -55,7 +57,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         throw Exception('User not found. Please sign in again.');
       }
 
-      final url = await ImageUploadService.instance.uploadUserAvatar(userId: user.id, bytes: bytes);
+      final url = await ImageUploadService.instance
+          .uploadUserAvatar(userId: user.id, bytes: bytes);
 
       await provider.userService.updateUser(user.copyWith(avatarUrl: url));
       await provider.refreshUser();
@@ -83,7 +86,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await provider.loadMissions();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Welcome mission created! Check your missions.')),
+          const SnackBar(
+              content: Text('Welcome mission created! Check your missions.')),
         );
       }
     } catch (e) {
@@ -109,8 +113,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             tooltip: 'Sign out',
             onPressed: () async {
               try {
-                await context.read<AppProvider>().signOut();
-                if (mounted) context.go('/auth');
+                final provider = context.read<AppProvider>();
+                final user = provider.currentUser;
+                if (user == null) return;
+                final unlocked = await requireParentPassword(
+                  context,
+                  email: user.email,
+                  action: 'sign out',
+                );
+                if (!unlocked || !context.mounted) return;
+                await provider.signOut();
+                if (context.mounted) context.go('/auth');
               } catch (e) {
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -182,8 +195,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           CircleAvatar(
                             radius: 44,
-                            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                            backgroundImage: (provider.currentUser?.avatarUrl != null)
+                            backgroundColor:
+                                Theme.of(context).colorScheme.primaryContainer,
+                            backgroundImage: (provider.currentUser?.avatarUrl !=
+                                    null)
                                 ? NetworkImage(provider.currentUser!.avatarUrl!)
                                 : null,
                             child: (provider.currentUser?.avatarUrl == null)
@@ -198,24 +213,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             bottom: -2,
                             child: IconButton(
                               style: IconButton.styleFrom(
-                                backgroundColor: Theme.of(context).colorScheme.surface,
+                                backgroundColor:
+                                    Theme.of(context).colorScheme.surface,
                                 padding: const EdgeInsets.all(6),
                               ),
                               icon: _uploadingAvatar
                                   ? const SizedBox(
                                       height: 18,
                                       width: 18,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
                                     )
                                   : const Icon(Icons.photo_camera, size: 18),
-                              onPressed: _uploadingAvatar ? null : _changeAvatar,
+                              onPressed:
+                                  _uploadingAvatar ? null : _changeAvatar,
                               tooltip: 'Update profile photo',
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Text(user.codename, style: context.textStyles.headlineMedium!.bold),
+                      Text(user.codename,
+                          style: context.textStyles.headlineMedium!.bold),
                       const SizedBox(height: 4),
                       Text(
                         'Level ${user.level} Agent',
@@ -230,18 +249,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Container(
                   padding: AppSpacing.paddingMd,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                   child: Column(
                     children: [
-                      _buildStatRow(context, 'Total Stars', user.totalStars.toString(), Icons.star),
+                      _buildStatRow(context, 'Total Stars',
+                          user.totalStars.toString(), Icons.star),
                       const Divider(height: 24),
-                      _buildStatRow(context, 'Current Streak', '${user.currentStreak} days', Icons.local_fire_department),
+                      _buildStatRow(
+                          context,
+                          'Current Streak',
+                          '${user.currentStreak} days',
+                          Icons.local_fire_department),
                       const Divider(height: 24),
-                      _buildStatRow(context, 'Longest Streak', '${user.longestStreak} days', Icons.emoji_events),
+                      _buildStatRow(context, 'Longest Streak',
+                          '${user.longestStreak} days', Icons.emoji_events),
                       const Divider(height: 24),
-                      _buildStatRow(context, 'Next Level', '${user.starsInCurrentLevel}/${user.nextLevelStars} stars', Icons.trending_up),
+                      _buildStatRow(
+                          context,
+                          'Next Level',
+                          '${user.starsInCurrentLevel}/${user.nextLevelStars} stars',
+                          Icons.trending_up),
                     ],
                   ),
                 ),
@@ -265,13 +295,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: Row(
                     children: [
-                      Text(handler.avatar, style: const TextStyle(fontSize: 40)),
+                      Text(handler.avatar,
+                          style: const TextStyle(fontSize: 40)),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(handler.name, style: context.textStyles.titleMedium!.semiBold),
+                            Text(handler.name,
+                                style:
+                                    context.textStyles.titleMedium!.semiBold),
                             const SizedBox(height: 4),
                             Text(
                               handler.category,
@@ -291,7 +324,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: _creatingWelcomeMission ? null : _createWelcomeMission,
+                      onPressed: _creatingWelcomeMission
+                          ? null
+                          : _createWelcomeMission,
                       icon: _creatingWelcomeMission
                           ? const SizedBox(
                               width: 16,
@@ -310,7 +345,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   width: double.infinity,
                   padding: AppSpacing.paddingMd,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                   child: Text(
@@ -319,7 +355,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text('Achievements', style: context.textStyles.titleLarge!.bold),
+                Text('Achievements',
+                    style: context.textStyles.titleLarge!.bold),
                 const SizedBox(height: 12),
                 FutureBuilder<List<Achievement>>(
                   future: provider.achievementService.getAllAchievements(),
@@ -336,12 +373,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         return Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(AppRadius.sm),
                           ),
                           child: Column(
                             children: [
-                              Text(achievement.icon, style: const TextStyle(fontSize: 32)),
+                              Text(achievement.icon,
+                                  style: const TextStyle(fontSize: 32)),
                               const SizedBox(height: 4),
                               Text(
                                 achievement.name,
@@ -363,7 +403,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStatRow(BuildContext context, String label, String value, IconData icon) {
+  Widget _buildStatRow(
+      BuildContext context, String label, String value, IconData icon) {
     return Row(
       children: [
         Icon(icon, color: Theme.of(context).colorScheme.primary, size: 24),
