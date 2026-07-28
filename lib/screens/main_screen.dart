@@ -701,15 +701,100 @@ class _ScreenTimeSetup extends StatefulWidget {
 
 class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
   late Future<ScreenTimeStatus> _status = ScreenTimeService().status();
+  List<ControlledApp> _apps = const [];
+  Set<String> _selectedPackages = {};
+  int _remainingSeconds = 0;
+  bool _loadingApps = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConfiguration();
+  }
+
+  Future<void> _loadConfiguration() async {
+    try {
+      final results = await Future.wait([
+        ScreenTimeService().getInstalledApps(),
+        ScreenTimeService().getConfiguration(),
+      ]);
+      if (!mounted) return;
+      final configuration = results[1] as ScreenTimeConfiguration;
+      setState(() {
+        _apps = results[0] as List<ControlledApp>;
+        _selectedPackages = configuration.packages;
+        _remainingSeconds = configuration.remainingSeconds;
+        _loadingApps = false;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _loadingApps = false);
+    }
+  }
 
   Future<void> _enable() async {
-    setState(() => _status = ScreenTimeService().requestAuthorization());
+    await ScreenTimeService().requestAuthorization();
+    if (mounted) setState(() => _status = ScreenTimeService().status());
+  }
+
+  Future<void> _checkAgain() async {
+    setState(() => _status = ScreenTimeService().status());
+    await _loadConfiguration();
+  }
+
+  Future<void> _chooseApps() async {
+    if (_apps.isEmpty) return;
+    final draft = Set<String>.from(_selectedPackages);
+    final saved = await showDialog<Set<String>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Choose play apps'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              shrinkWrap: true,
+              children: _apps
+                  .map(
+                    (app) => CheckboxListTile(
+                      value: draft.contains(app.packageName),
+                      title: Text(app.name),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      onChanged: (selected) => setDialogState(() {
+                        if (selected == true) {
+                          draft.add(app.packageName);
+                        } else {
+                          draft.remove(app.packageName);
+                        }
+                      }),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('CANCEL'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, draft),
+              child: const Text('SAVE'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved == null || !mounted) return;
     try {
-      await _status;
+      await ScreenTimeService().configureAndroid(
+        packages: saved,
+        awardedMinutes: context.read<AppProvider>().availableRewardMinutes,
+      );
+      setState(() => _selectedPackages = saved);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Screen Time setup failed: $error')),
+          SnackBar(content: Text('Could not save play apps: $error')),
         );
       }
     }
@@ -720,20 +805,136 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
         future: _status,
         builder: (context, snapshot) {
           final status = snapshot.data;
-          return _EmptyState(
-            icon: status?.authorized == true
-                ? Icons.verified_user_rounded
-                : Icons.phonelink_lock_rounded,
-            title: status?.authorized == true
-                ? 'Screen Time is ready'
-                : 'Turn on Screen Time',
-            body: status?.platform == 'android'
-                ? 'Android support is detected. App blocking will use Android accessibility setup.'
-                : 'A parent must approve Apple Family Controls on this iPhone.',
-            action: status?.authorized == true ? null : 'TURN ON',
-            onTap: status?.authorized == true ? null : _enable,
+          if (status?.platform != 'android') {
+            return _EmptyState(
+              icon: status?.authorized == true
+                  ? Icons.verified_user_rounded
+                  : Icons.phonelink_lock_rounded,
+              title: status?.authorized == true
+                  ? 'Screen Time is ready'
+                  : 'Turn on Screen Time',
+              body:
+                  'A parent must approve Apple Family Controls on this iPhone.',
+              action: status?.authorized == true ? null : 'TURN ON',
+              onTap: status?.authorized == true ? null : _enable,
+            );
+          }
+
+          final chosenNames = _apps
+              .where((app) => _selectedPackages.contains(app.packageName))
+              .map((app) => app.name)
+              .take(3)
+              .join(', ');
+          return Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFDDE5E5)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Play app limits',
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _SetupStep(
+                  number: '1',
+                  title: _selectedPackages.isEmpty
+                      ? 'Choose play apps'
+                      : '${_selectedPackages.length} apps chosen',
+                  detail: chosenNames.isEmpty
+                      ? 'Pick a game or video app to test.'
+                      : chosenNames,
+                  complete: _selectedPackages.isNotEmpty,
+                  action: _loadingApps ? null : _chooseApps,
+                  actionLabel: _selectedPackages.isEmpty ? 'CHOOSE' : 'CHANGE',
+                ),
+                const SizedBox(height: 14),
+                _SetupStep(
+                  number: '2',
+                  title: status?.authorized == true
+                      ? 'Phone permission is on'
+                      : 'Turn on Questime',
+                  detail: status?.authorized == true
+                      ? 'Questime can now stop selected apps.'
+                      : 'On the next screen, tap Questime and turn it on.',
+                  complete: status?.authorized == true,
+                  action: status?.authorized == true ? _checkAgain : _enable,
+                  actionLabel: status?.authorized == true ? 'CHECK' : 'TURN ON',
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  color: _mint,
+                  child: Text(
+                    '${(_remainingSeconds / 60).ceil()} minutes available on this phone',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: _ink,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           );
         },
+      );
+}
+
+class _SetupStep extends StatelessWidget {
+  final String number;
+  final String title;
+  final String detail;
+  final bool complete;
+  final VoidCallback? action;
+  final String actionLabel;
+
+  const _SetupStep({
+    required this.number,
+    required this.title,
+    required this.detail,
+    required this.complete,
+    required this.action,
+    required this.actionLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: complete ? _teal : const Color(0xFFE8EEEE),
+            foregroundColor: complete ? Colors.white : _ink,
+            child: complete
+                ? const Icon(Icons.check_rounded, size: 20)
+                : Text(number,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        color: _ink, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 3),
+                Text(detail, style: const TextStyle(color: Color(0xFF667684))),
+              ],
+            ),
+          ),
+          TextButton(onPressed: action, child: Text(actionLabel)),
+        ],
       );
 }
 

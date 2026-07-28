@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Questime</string>
+    <string name="questime_accessibility_description">Blocks parent-selected apps when earned play time runs out.</string>
+</resources>

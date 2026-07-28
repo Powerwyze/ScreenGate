@@ -250,13 +250,30 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
     _rewardSubscription?.cancel();
     _rewardSubscription = RewardService().watchAvailableMinutes().listen(
       (minutes) {
-        _availableRewardMinutes = minutes;
-        notifyListeners();
+        _applyRewardMinutes(minutes);
       },
       onError: (Object error) {
         debugPrint('[AppProvider] Reward stream error: $error');
       },
     );
+  }
+
+  Future<void> _applyRewardMinutes(int awardedMinutes) async {
+    var visibleMinutes = awardedMinutes;
+    if (_currentUser?.accountRole == AccountRole.child) {
+      try {
+        final screenTime = ScreenTimeService();
+        await screenTime.configureAndroid(awardedMinutes: awardedMinutes);
+        final configuration = await screenTime.getConfiguration();
+        visibleMinutes = (configuration.remainingSeconds / 60).ceil();
+      } catch (error) {
+        debugPrint('[Screen Time] Allowance sync failed: $error');
+      }
+    }
+    if (_availableRewardMinutes != visibleMinutes) {
+      _availableRewardMinutes = visibleMinutes;
+      notifyListeners();
+    }
   }
 
   void _startRefreshFallback() {
@@ -273,10 +290,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
     try {
       await loadMissions();
       final minutes = await RewardService().getAvailableMinutes();
-      if (_availableRewardMinutes != minutes) {
-        _availableRewardMinutes = minutes;
-        notifyListeners();
-      }
+      await _applyRewardMinutes(minutes);
     } catch (error) {
       debugPrint('[AppProvider] Family refresh failed: $error');
     } finally {
