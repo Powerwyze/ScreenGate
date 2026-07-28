@@ -11,13 +11,13 @@ This repository is pivoting from the TaskAssassin prototype. The Flutter package
 - Android application ID is prepared as `com.powerwyze.questime`.
 - iOS display metadata now uses Questime branding.
 - The Flutter app no longer packages `.env` as an asset.
-- Gemini calls are routed through the Supabase `gemini-chat` Edge Function.
-- Gemini API keys belong in Supabase Edge Function secrets, never in the Flutter client.
+- ChatGPT/OpenAI calls are routed through the Supabase `chatgpt-chat` Edge Function.
+- OpenAI API keys belong in Supabase Edge Function secrets, never in the Flutter client.
 - Push notifications are disabled by default until Firebase is registered for the final app IDs.
 
 ## Mobile Release Path
 
-See [docs/mobile-release.md](docs/mobile-release.md) for the Android and iOS release checklist, signing requirements, Firebase setup, and store metadata tasks.
+See [docs/mobile-release.md](docs/mobile-release.md) for the Android and iOS release checklist, signing requirements, Firebase setup, Supabase CLI deployment, and store metadata tasks.
 
 ## Flutter Build Configuration
 
@@ -30,18 +30,31 @@ flutter build appbundle --release \
   --dart-define=ENABLE_PUSH=false
 ```
 
+## Supabase Edge Function Deployment
+
+Deploy the ChatGPT-backed Edge Function with the Supabase CLI after linking the project:
+
+```sh
+supabase link --project-ref gbwzsxjromwefuopvzfg
+supabase secrets set OPENAI_API_KEY=... OPENAI_MODEL=gpt-5.6-luna ALLOWED_ORIGIN=*
+supabase functions deploy chatgpt-chat
+```
+
+`ALLOWED_IMAGE_HOSTS` is optional and defaults to the Supabase project host.
+
 ## Required Server-Side Secrets
 
 Configure these in Supabase Edge Function secrets:
 
 ```text
-GEMINI_API_KEY=
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.6-luna
 ALLOWED_ORIGIN=*
 MAX_REQUEST_BYTES=12000
 MAX_IMAGE_BYTES=5242880
+MAX_OUTPUT_TOKENS=900
+OPENAI_TIMEOUT_MS=45000
 ```
-
-`ALLOWED_IMAGE_HOSTS` is optional and defaults to the Supabase project host.
 
 ## Local Checks
 
@@ -54,8 +67,8 @@ flutter build appbundle --release
 flutter build ios --release --no-codesign
 ```
 
-GitHub Actions now verifies web, Android app bundle, and iOS no-codesign builds for pull requests.
+GitHub Actions verifies web, Android app bundle, iOS no-codesign, and Supabase Edge Function checks for pull requests.
 
 ## Security Notes
 
-Revoke any Gemini key that was previously committed to repository history. Before production, add Supabase migrations for RLS and Storage policies so the backend security model is versioned with the app.
+Revoke any old AI provider key that was previously committed to repository history. Before production, add Supabase migrations for RLS and Storage policies so the backend security model is versioned with the app.

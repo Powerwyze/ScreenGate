@@ -7,6 +7,10 @@ type HandlerPayload = {
   personalityStyle: string
 }
 
+type OpenAIContentPart =
+  | { type: "input_text"; text: string }
+  | { type: "input_image"; image_url: string }
+
 class HttpError extends Error {
   status: number
   details?: unknown
@@ -18,9 +22,18 @@ class HttpError extends Error {
   }
 }
 
-const MODEL_FALLBACKS = ["gemini-2.0-flash", "gemini-2.0-flash-001", "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"]
-const MAX_REQUEST_BYTES = Number(Deno.env.get("MAX_REQUEST_BYTES") ?? 12000)
-const MAX_IMAGE_BYTES = Number(Deno.env.get("MAX_IMAGE_BYTES") ?? 5242880)
+const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
+const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL")?.trim() || "gpt-5.6-luna"
+const MAX_REQUEST_BYTES = envNumber("MAX_REQUEST_BYTES", 12000, 1000, 100000)
+const MAX_IMAGE_BYTES = envNumber("MAX_IMAGE_BYTES", 5242880, 1000, 20000000)
+const MAX_OUTPUT_TOKENS = envNumber("MAX_OUTPUT_TOKENS", 900, 128, 4000)
+const OPENAI_TIMEOUT_MS = envNumber("OPENAI_TIMEOUT_MS", 45000, 1000, 120000)
+
+function envNumber(name: string, fallback: number, min: number, max: number): number {
+  const parsed = Number(Deno.env.get(name) ?? fallback)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.min(Math.max(parsed, min), max)
+}
 
 function corsHeaders(req: Request) {
   const configured = Deno.env.get("ALLOWED_ORIGIN")?.trim()
@@ -160,46 +173,11 @@ async function parseJsonBody(req: Request): Promise<any> {
   }
 }
 
-async function callGeminiAPI(apiKey: string, model: string, contents: any[]): Promise<any> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents }),
-  })
-
-  if (!response.ok) {
-    let details: unknown = await response.text()
-    try {
-      details = JSON.parse(details as string)
-    } catch (_) {
-      // Keep plain text details.
-    }
-    throw new HttpError(response.status, "Gemini API error", details)
-  }
-
-  return response.json()
+function inputText(text: string): OpenAIContentPart {
+  return { type: "input_text", text }
 }
 
-async function generateWithFallback(apiKey: string, contents: any[]) {
-  let lastError: unknown
-  for (const model of MODEL_FALLBACKS) {
-    try {
-      return await callGeminiAPI(apiKey, model, contents)
-    } catch (err: any) {
-      lastError = err
-      console.log(`Model ${model} failed:`, err?.details?.error?.message || err?.message || "unknown error")
-    }
-  }
-  throw lastError
-}
-
-function extractText(result: any): string {
-  return result?.candidates?.[0]?.content?.parts?.[0]?.text || ""
-}
-
-async function addImagePart(parts: any[], urlValue: unknown) {
+async function addImagePart(parts: OpenAIContentPart[], urlValue: unknown) {
   const url = allowedImageUrl(urlValue)
   if (!url) return
 
@@ -224,11 +202,120 @@ async function addImagePart(parts: any[], urlValue: unknown) {
   }
 
   parts.push({
-    inlineData: {
-      data: bytesToBase64(bytes),
-      mimeType: contentType,
-    },
+    type: "input_image",
+    image_url: `data:${contentType};base64,${bytesToBase64(bytes)}`,
   })
+}
+
+async function callOpenAI(apiKey: string, input: any[], textFormat?: Record<string, unknown>): Promise<any> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS)
+
+  const requestBody: Record<string, unknown> = {
+    model: OPENAI_MODEL,
+    input,
+    max_output_tokens: MAX_OUTPUT_TOKENS,
+  }
+
+  if (textFormat) {
+    requestBody.text = { format: textFormat }
+  }
+
+  try {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      let details: unknown = await response.text()
+      try {
+        details = JSON.parse(details as string)
+      } catch (_) {
+        // Keep plain text details.
+      }
+      throw new HttpError(response.status, "OpenAI API error", details)
+    }
+
+    return response.json()
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+function extractText(result: any): string {
+  if (typeof result?.output_text === "string") {
+    return result.output_text.trim()
+  }
+
+  const chunks: string[] = []
+  for (const item of result?.output ?? []) {
+    for (const part of item?.content ?? []) {
+      if (typeof part?.text === "string") chunks.push(part.text)
+    }
+  }
+  return chunks.join("").trim()
+}
+
+function parseJsonObject(text: string): any {
+  try {
+    return JSON.parse(text)
+  } catch (_) {
+    const match = text.match(/\{[\s\S]*\}/)
+    if (!match) throw new HttpError(502, "OpenAI returned non-JSON output", text.substring(0, 300))
+    return JSON.parse(match[0])
+  }
+}
+
+function clampStars(value: number): number {
+  if (value < 1) return 1
+  if (value > 5) return 5
+  return value
+}
+
+function coerceStars(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return clampStars(Math.round(value))
+  if (typeof value === "string") return clampStars(Number.parseInt(value, 10) || 3)
+  return 3
+}
+
+const verificationFormat = {
+  type: "json_schema",
+  name: "mission_verification",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      stars: { type: "integer", minimum: 1, maximum: 5 },
+      feedback: { type: "string", minLength: 1, maxLength: 500 },
+    },
+    required: ["stars", "feedback"],
+  },
+}
+
+const missionSuggestionsFormat = {
+  type: "json_schema",
+  name: "mission_suggestions",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      missions: {
+        type: "array",
+        minItems: 1,
+        maxItems: 5,
+        items: { type: "string", minLength: 1, maxLength: 120 },
+      },
+    },
+    required: ["missions"],
+  },
 }
 
 serve(async (req) => {
@@ -241,9 +328,9 @@ serve(async (req) => {
     const body = await parseJsonBody(req)
     const { action, ...payload } = body
 
-    const apiKey = Deno.env.get("GEMINI_API_KEY")
+    const apiKey = Deno.env.get("OPENAI_API_KEY")
     if (!apiKey) {
-      throw new HttpError(500, "GEMINI_API_KEY is not set in Edge Function secrets")
+      throw new HttpError(500, "OPENAI_API_KEY is not set in Edge Function secrets")
     }
 
     if (action === "verifyMission") {
@@ -278,22 +365,23 @@ serve(async (req) => {
       prompt += `Quest: "${missionTitle}"\n`
       prompt += `Description: ${missionDescription}\n`
       prompt += `Expected completed state: ${completedState}\n\n`
-      prompt += "Analyze the provided proof images and strictly verify whether the quest is complete.\n"
+      prompt += "Analyze the proof images and strictly verify whether the quest is complete.\n"
       prompt += "Be conservative: if the AFTER photo does not clearly show the required result, rate 1-2 stars and explain what is missing.\n"
-      prompt += `Respond only as valid JSON: {"stars": <number 1-5>, "feedback": "<2-3 sentences in ${handler.name}'s voice referencing specific visual evidence>"}`
+      prompt += `Return JSON only with stars and feedback. The feedback must be 2-3 sentences in ${handler.name}'s voice and reference specific visual evidence.`
 
-      const parts: any[] = [{ text: prompt }]
+      const parts: OpenAIContentPart[] = [inputText(prompt)]
       await addImagePart(parts, beforePhotoUrl)
       await addImagePart(parts, afterPhotoUrl)
 
-      const result = await generateWithFallback(apiKey, [{ role: "user", parts }])
-      const responseText = extractText(result)
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) {
-        return jsonResponse(req, { stars: 3, feedback: responseText.substring(0, 200) })
-      }
+      const result = await callOpenAI(apiKey, [{ role: "user", content: parts }], verificationFormat)
+      const parsed = parseJsonObject(extractText(result))
 
-      return jsonResponse(req, JSON.parse(jsonMatch[0]))
+      return jsonResponse(req, {
+        stars: coerceStars(parsed?.stars),
+        feedback: typeof parsed?.feedback === "string" && parsed.feedback.trim().length > 0
+          ? parsed.feedback.trim().slice(0, 500)
+          : "Questime could not generate detailed verification feedback.",
+      })
     }
 
     if (action === "chatWithHandler") {
@@ -302,27 +390,23 @@ serve(async (req) => {
       const history = Array.isArray(payload.history) ? payload.history.slice(-12) : []
       const userProfileContext = optionalString(payload.userProfileContext, "userProfileContext", 2000)
 
-      let systemPrompt = `You are ${handler.name}, ${handler.description}\nPersonality: ${handler.personalityStyle}\n\n`
-      systemPrompt += "You are a Questime coach who helps users turn goals into concrete quests. Keep responses concise and actionable."
+      let prompt = `You are ${handler.name}, ${handler.description}\nPersonality: ${handler.personalityStyle}\n\n`
+      prompt += "You are a Questime coach who helps users turn goals into concrete quests. Keep responses concise and actionable."
       if (userProfileContext) {
-        systemPrompt += `\nUser context: ${userProfileContext}`
+        prompt += `\nUser context: ${userProfileContext}`
       }
 
-      const contents: any[] = [
-        { role: "user", parts: [{ text: systemPrompt }] },
-        { role: "model", parts: [{ text: "Understood. I am ready to help." }] },
-      ]
-
-      for (const msg of history) {
-        if (!msg || typeof msg !== "object" || typeof msg.content !== "string") continue
-        contents.push({
-          role: msg.role === "user" ? "user" : "model",
-          parts: [{ text: msg.content.slice(0, 2000) }],
-        })
+      if (history.length > 0) {
+        prompt += "\n\nRecent conversation:"
+        for (const msg of history) {
+          if (!msg || typeof msg !== "object" || typeof msg.content !== "string") continue
+          const role = msg.role === "user" ? "User" : handler.name
+          prompt += `\n${role}: ${msg.content.slice(0, 2000)}`
+        }
       }
 
-      contents.push({ role: "user", parts: [{ text: userMessage }] })
-      const result = await generateWithFallback(apiKey, contents)
+      prompt += `\n\nUser: ${userMessage}\n${handler.name}:`
+      const result = await callOpenAI(apiKey, [{ role: "user", content: [inputText(prompt)] }])
       return jsonResponse(req, { text: extractText(result) })
     }
 
@@ -332,22 +416,24 @@ serve(async (req) => {
       const countValue = Number(payload.count ?? 3)
       const count = Math.min(Math.max(Number.isFinite(countValue) ? countValue : 3, 1), 5)
 
-      const prompt = `You are ${handler.name}, ${handler.description}\nUser goals: ${userGoals}\n\nSuggest ${count} realistic Questime quests. Return only a JSON array of quest titles.`
-      const result = await generateWithFallback(apiKey, [{ role: "user", parts: [{ text: prompt }] }])
-      const text = extractText(result)
-      const jsonMatch = text.match(/\[[\s\S]*\]/)
-      if (!jsonMatch) {
-        return jsonResponse(req, { missions: ["Complete a daily quest", "Practice a new skill", "Help someone today"] })
-      }
+      const prompt = `You are ${handler.name}, ${handler.description}\nUser goals: ${userGoals}\n\nSuggest ${count} realistic Questime quests. Return JSON with a missions array of quest titles only.`
+      const result = await callOpenAI(apiKey, [{ role: "user", content: [inputText(prompt)] }], missionSuggestionsFormat)
+      const parsed = parseJsonObject(extractText(result))
+      const missions = Array.isArray(parsed?.missions) ? parsed.missions : []
 
-      return jsonResponse(req, { missions: JSON.parse(jsonMatch[0]) })
+      return jsonResponse(req, {
+        missions: missions
+          .map((mission: unknown) => String(mission).trim())
+          .filter((mission: string) => mission.length > 0)
+          .slice(0, count),
+      })
     }
 
     throw new HttpError(400, `Unknown action: ${action}`)
   } catch (error: any) {
     console.error("Edge Function Error:", error)
     const status = error instanceof HttpError ? error.status : error?.status || 500
-    const message = error instanceof HttpError ? error.message : "Gemini API error"
+    const message = error instanceof HttpError ? error.message : "OpenAI API error"
     const details = error instanceof HttpError ? error.details : error?.details || error?.message || "Unknown error"
     return jsonResponse(req, { error: message, details }, status)
   }

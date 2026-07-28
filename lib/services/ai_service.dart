@@ -5,7 +5,7 @@ import 'package:taskassassin/models/handler.dart';
 import 'package:taskassassin/supabase/supabase_config.dart';
 
 class AIService {
-  static const String _functionName = 'gemini-chat';
+  static const String _functionName = 'chatgpt-chat';
 
   Map<String, dynamic> _handlerPayload(Handler handler) => {
     'id': handler.id,
@@ -19,7 +19,7 @@ class AIService {
     'greeting_message': handler.greetingMessage,
   };
 
-  Future<Map<String, dynamic>> _invokeGemini(
+  Future<Map<String, dynamic>> _invokeChatGpt(
     String action,
     Map<String, dynamic> payload,
   ) async {
@@ -85,7 +85,7 @@ class AIService {
     }
 
     try {
-      final result = await _invokeGemini('verifyMission', {
+      final result = await _invokeChatGpt('verifyMission', {
         'missionId': missionId,
         'missionTitle': missionTitle,
         'missionDescription': missionDescription,
@@ -114,7 +114,7 @@ class AIService {
     String? userProfileContext,
   }) async {
     try {
-      final result = await _invokeGemini('chatWithHandler', {
+      final result = await _invokeChatGpt('chatWithHandler', {
         'handler': _handlerPayload(handler),
         'history': conversationHistory,
         'userMessage': userMessage,
@@ -148,7 +148,7 @@ class AIService {
     int count = 3,
   }) async {
     try {
-      final result = await _invokeGemini('generateMissionSuggestions', {
+      final result = await _invokeChatGpt('generateMissionSuggestions', {
         'userGoals': userGoals,
         'handler': _handlerPayload(handler),
         'count': count,
