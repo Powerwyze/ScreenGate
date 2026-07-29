@@ -18,6 +18,7 @@ import 'package:taskassassin/services/bug_report_service.dart';
 import 'package:taskassassin/services/push_notification_service.dart';
 import 'package:taskassassin/services/screen_time_service.dart';
 import 'package:taskassassin/services/reward_service.dart';
+import 'package:taskassassin/services/family_service.dart';
 import 'package:taskassassin/supabase/supabase_config.dart';
 
 class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
@@ -151,6 +152,12 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
       _currentUser = await userService.getCurrentUser();
 
       if (_currentUser != null) {
+        if (_currentUser!.accountRole == AccountRole.child) {
+          await FamilyService().rememberChild(RememberedChild(
+            id: _currentUser!.id,
+            name: _currentUser!.codename,
+          ));
+        }
         // Get handler (synchronous - no async needed)
         _currentHandler =
             handlerService.getHandlerById(_currentUser!.selectedHandlerId);
@@ -368,6 +375,12 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> signOut() async {
     try {
+      if (_currentUser?.accountRole == AccountRole.child) {
+        await FamilyService().rememberChild(RememberedChild(
+          id: _currentUser!.id,
+          name: _currentUser!.codename,
+        ));
+      }
       // Delete FCM token before signing out (silently fail if push notifications aren't available)
       try {
         await PushNotificationService().deleteToken();

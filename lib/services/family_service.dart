@@ -192,6 +192,15 @@ class FamilyService {
     }
   }
 
+  Future<bool> hasPairedInstallation() async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences
+            .getString('questime_installation_id')
+            ?.trim()
+            .isNotEmpty ==
+        true;
+  }
+
   Future<void> rememberChild(RememberedChild child) async {
     final preferences = await SharedPreferences.getInstance();
     final children = await getRememberedChildren();
@@ -215,6 +224,29 @@ class FamilyService {
     );
     if (response.user == null) throw Exception('Child sign-in failed');
     await rememberChild(child);
+  }
+
+  Future<void> signInPairedDevice({required String password}) async {
+    final preferences = await SharedPreferences.getInstance();
+    final installationId =
+        preferences.getString('questime_installation_id')?.trim();
+    if (installationId == null || installationId.isEmpty) {
+      throw Exception('This phone needs to be paired once');
+    }
+    final response = await SupabaseConfig.client.functions.invoke(
+      'child-device-login',
+      body: {
+        'installationId': installationId,
+        'password': password,
+      },
+    );
+    final data = Map<String, dynamic>.from(response.data as Map);
+    if (data['error'] != null) throw Exception(data['error']);
+    await SupabaseConfig.auth.setSession(data['refreshToken'] as String);
+    await rememberChild(RememberedChild(
+      id: data['childUserId'] as String,
+      name: data['childName'] as String? ?? 'Child',
+    ));
   }
 
   Future<void> setChildPassword({

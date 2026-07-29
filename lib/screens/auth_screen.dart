@@ -24,6 +24,7 @@ class _AuthScreenState extends State<AuthScreen> {
   String? _deviceRole;
   List<RememberedChild> _rememberedChildren = const [];
   RememberedChild? _selectedRememberedChild;
+  bool _hasPairedInstallation = false;
 
   @override
   void initState() {
@@ -32,11 +33,19 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _loadRememberedChildren() async {
-    final children = await FamilyService().getRememberedChildren();
-    if (!mounted || children.isEmpty) return;
+    final service = FamilyService();
+    final results = await Future.wait([
+      service.getRememberedChildren(),
+      service.hasPairedInstallation(),
+    ]);
+    if (!mounted) return;
+    final children = results[0] as List<RememberedChild>;
+    final hasPairedInstallation = results[1] as bool;
+    if (children.isEmpty && !hasPairedInstallation) return;
     setState(() {
       _rememberedChildren = children;
-      _selectedRememberedChild = children.first;
+      _selectedRememberedChild = children.isEmpty ? null : children.first;
+      _hasPairedInstallation = hasPairedInstallation;
       _deviceRole = 'child';
     });
   }
@@ -106,7 +115,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _signInRememberedChild() async {
     final child = _selectedRememberedChild;
-    if (child == null || _passwordController.text.isEmpty) {
+    if (_passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter the child password.')),
       );
@@ -116,10 +125,15 @@ class _AuthScreenState extends State<AuthScreen> {
     final provider = context.read<AppProvider>();
     setState(() => _isLoading = true);
     try {
-      await FamilyService().signInRememberedChild(
-        child: child,
-        password: _passwordController.text,
-      );
+      if (child == null) {
+        await FamilyService()
+            .signInPairedDevice(password: _passwordController.text);
+      } else {
+        await FamilyService().signInRememberedChild(
+          child: child,
+          password: _passwordController.text,
+        );
+      }
       await provider.reloadProfile();
     } catch (_) {
       if (mounted) {
@@ -292,7 +306,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'v1.5.1',
+                      'v1.5.2',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: const Color(0xFF8A9AA6),
                           ),
@@ -307,9 +321,10 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _buildChildPhone() {
-    final usePassword = _rememberedChildren.isNotEmpty &&
-        !_isPairingNewChild &&
-        !_isRecoveringChild;
+    final usePassword =
+        (_rememberedChildren.isNotEmpty || _hasPairedInstallation) &&
+            !_isPairingNewChild &&
+            !_isRecoveringChild;
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF9),
       body: SafeArea(
@@ -351,27 +366,35 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 44),
               if (usePassword) ...[
-                DropdownButtonFormField<RememberedChild>(
-                  initialValue: _selectedRememberedChild,
-                  decoration: const InputDecoration(
-                    labelText: 'Child',
-                    prefixIcon: Icon(Icons.face_rounded),
+                if (_rememberedChildren.isEmpty)
+                  const ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.phone_android_rounded),
+                    title: Text('Paired child account'),
+                    subtitle: Text('Enter the password your parent created.'),
+                  )
+                else
+                  DropdownButtonFormField<RememberedChild>(
+                    initialValue: _selectedRememberedChild,
+                    decoration: const InputDecoration(
+                      labelText: 'Child',
+                      prefixIcon: Icon(Icons.face_rounded),
+                    ),
+                    items: _rememberedChildren
+                        .map(
+                          (child) => DropdownMenuItem(
+                            value: child,
+                            child: Text(child.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: _isLoading
+                        ? null
+                        : (child) => setState(() {
+                              _selectedRememberedChild = child;
+                              _passwordController.clear();
+                            }),
                   ),
-                  items: _rememberedChildren
-                      .map(
-                        (child) => DropdownMenuItem(
-                          value: child,
-                          child: Text(child.name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: _isLoading
-                      ? null
-                      : (child) => setState(() {
-                            _selectedRememberedChild = child;
-                            _passwordController.clear();
-                          }),
-                ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _passwordController,
