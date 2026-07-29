@@ -19,7 +19,6 @@ class _AuthScreenState extends State<AuthScreen> {
   final _authManager = SupabaseAuthManager();
   bool _isSignUp = false;
   bool _isLoading = false;
-  bool _isRecoveringChild = false;
   bool _isPairingNewChild = false;
   String? _deviceRole;
   List<RememberedChild> _rememberedChildren = const [];
@@ -62,28 +61,6 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _joinFamily() async {
     final code = _familyCodeController.text.trim();
     final name = _childNameController.text.trim();
-    if (_isRecoveringChild) {
-      if (code.length != 8) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enter the 8-character child code.')),
-        );
-        return;
-      }
-      setState(() => _isLoading = true);
-      try {
-        await FamilyService().recoverChild(code);
-        await context.read<AppProvider>().reloadProfile();
-      } catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('That child code did not work.')),
-          );
-        }
-      } finally {
-        if (mounted) setState(() => _isLoading = false);
-      }
-      return;
-    }
     if (code.length != 6 || name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -100,10 +77,13 @@ class _AuthScreenState extends State<AuthScreen> {
       await provider.reloadProfile();
     } catch (error) {
       if (mounted) {
-        final message = error.toString().toLowerCase().contains('expired') ||
-                error.toString().toLowerCase().contains('invalid')
-            ? 'That family code is not valid. Ask your parent for a new one.'
-            : 'Could not join the family. Please try again.';
+        final normalizedError = error.toString().toLowerCase();
+        final message = normalizedError.contains('already used')
+            ? 'That name is already used in this family.'
+            : normalizedError.contains('expired') ||
+                    normalizedError.contains('invalid')
+                ? 'That family code is not valid. Ask your parent for a new one.'
+                : 'Could not join the family. Please try again.';
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(message)));
       }
@@ -115,6 +95,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _signInRememberedChild() async {
     final child = _selectedRememberedChild;
+    if (child == null && _childNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your name.')),
+      );
+      return;
+    }
     if (_passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter the child password.')),
@@ -126,8 +112,10 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _isLoading = true);
     try {
       if (child == null) {
-        await FamilyService()
-            .signInPairedDevice(password: _passwordController.text);
+        await FamilyService().signInPairedDevice(
+          username: _childNameController.text,
+          password: _passwordController.text,
+        );
       } else {
         await FamilyService().signInRememberedChild(
           child: child,
@@ -306,7 +294,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'v1.5.2',
+                      'v1.6.0',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: const Color(0xFF8A9AA6),
                           ),
@@ -323,8 +311,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildChildPhone() {
     final usePassword =
         (_rememberedChildren.isNotEmpty || _hasPairedInstallation) &&
-            !_isPairingNewChild &&
-            !_isRecoveringChild;
+            !_isPairingNewChild;
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF9),
       body: SafeArea(
@@ -356,24 +343,15 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                _isRecoveringChild
-                    ? 'Enter this phone’s child code.'
-                    : usePassword
-                        ? 'Welcome back. Enter your password.'
-                        : 'Enter the family code from your parent.',
+                usePassword
+                    ? 'Use your name and password.'
+                    : 'Enter the family code from your parent.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Color(0xFF667684), fontSize: 17),
               ),
               const SizedBox(height: 44),
               if (usePassword) ...[
-                if (_rememberedChildren.isEmpty)
-                  const ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.phone_android_rounded),
-                    title: Text('Paired child account'),
-                    subtitle: Text('Enter the password your parent created.'),
-                  )
-                else
+                if (_rememberedChildren.isNotEmpty)
                   DropdownButtonFormField<RememberedChild>(
                     initialValue: _selectedRememberedChild,
                     decoration: const InputDecoration(
@@ -395,6 +373,15 @@ class _AuthScreenState extends State<AuthScreen> {
                               _passwordController.clear();
                             }),
                   ),
+                if (_rememberedChildren.isEmpty)
+                  TextField(
+                    controller: _childNameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Your name',
+                      prefixIcon: Icon(Icons.face_rounded),
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _passwordController,
@@ -407,7 +394,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     prefixIcon: Icon(Icons.lock_rounded),
                   ),
                 ),
-              ] else if (!_isRecoveringChild) ...[
+              ] else ...[
                 TextField(
                   controller: _childNameController,
                   textCapitalization: TextCapitalization.words,
@@ -423,7 +410,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   controller: _familyCodeController,
                   textAlign: TextAlign.center,
                   textCapitalization: TextCapitalization.characters,
-                  maxLength: _isRecoveringChild ? 8 : 6,
+                  maxLength: 6,
                   style: const TextStyle(
                     color: Color(0xFF17324D),
                     fontSize: 28,
@@ -431,8 +418,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     letterSpacing: 8,
                   ),
                   decoration: InputDecoration(
-                    labelText:
-                        _isRecoveringChild ? 'Recovery code' : 'Family code',
+                    labelText: 'Family code',
                     counterText: '',
                   ),
                 ),
@@ -456,9 +442,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       ? 'CONNECTING...'
                       : usePassword
                           ? 'OPEN MY QUESTS'
-                          : _isRecoveringChild
-                              ? 'OPEN MY QUESTS'
-                              : 'JOIN MY FAMILY'),
+                          : 'JOIN MY FAMILY'),
                 ),
               ),
               const SizedBox(height: 28),
@@ -468,41 +452,20 @@ class _AuthScreenState extends State<AuthScreen> {
                     : () => setState(() {
                           if (usePassword) {
                             _isPairingNewChild = true;
-                            _isRecoveringChild = false;
-                          } else if (_isRecoveringChild) {
-                            _isPairingNewChild = true;
-                            _isRecoveringChild = false;
                           } else if (_rememberedChildren.isNotEmpty) {
                             _isPairingNewChild = false;
-                            _isRecoveringChild = false;
                           } else {
                             _isPairingNewChild = false;
-                            _isRecoveringChild = true;
                           }
                           _familyCodeController.clear();
                         }),
                 child: Text(usePassword
                     ? 'Pair a different child'
-                    : _isRecoveringChild
-                        ? 'Use a family pairing code'
-                        : _rememberedChildren.isEmpty
-                            ? 'This phone was paired before'
-                            : 'Back to child sign in'),
+                    : 'Back to child sign in'),
               ),
-              if (!usePassword && !_isRecoveringChild)
-                TextButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () => setState(() {
-                            _isRecoveringChild = true;
-                            _isPairingNewChild = false;
-                            _familyCodeController.clear();
-                          }),
-                  child: const Text('Use a recovery code'),
-                ),
               Text(
                 usePassword
-                    ? 'No pairing code needed.'
+                    ? 'Ask your parent if you forgot your password.'
                     : 'Pairing is only needed once.',
                 style: const TextStyle(
                     color: Color(0xFF0B8F87), fontWeight: FontWeight.w700),

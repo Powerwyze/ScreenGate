@@ -62,7 +62,21 @@ Deno.serve(async (request) => {
     );
     if (updateError) throw updateError;
 
-    return Response.json({ ok: true }, { headers: cors });
+    const { error: profileError } = await admin
+      .from("users")
+      .update({ child_password_set_at: new Date().toISOString() })
+      .eq("id", childId);
+    if (profileError) throw profileError;
+
+    const { data: profile } = await admin
+      .from("users")
+      .select("codename")
+      .eq("id", childId)
+      .single();
+    return Response.json(
+      { ok: true, username: profile?.codename ?? "Child" },
+      { headers: cors },
+    );
   } catch (error) {
     return Response.json(
       { error: error instanceof Error ? error.message : String(error) },

@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskassassin/supabase/supabase_config.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RememberedChild {
   final String id;
@@ -22,10 +21,15 @@ class RememberedChild {
 class FamilyChild {
   final String id;
   final String name;
+  final bool hasPassword;
   final List<QuestimeDevice> devices;
 
-  const FamilyChild(
-      {required this.id, required this.name, required this.devices});
+  const FamilyChild({
+    required this.id,
+    required this.name,
+    required this.hasPassword,
+    required this.devices,
+  });
 }
 
 class QuestimeDevice {
@@ -74,13 +78,6 @@ class FamilyPairingCode {
   }
 }
 
-class ChildRecoveryCode {
-  final String code;
-  final String childUserId;
-
-  const ChildRecoveryCode({required this.code, required this.childUserId});
-}
-
 class FamilyService {
   static const _rememberedChildrenKey = 'remembered_child_accounts';
 
@@ -111,7 +108,8 @@ class FamilyService {
   Future<List<FamilyChild>> getChildren() async {
     final memberships = await SupabaseConfig.client
         .from('family_members')
-        .select('user_id, users!family_members_user_id_fkey(codename)')
+        .select(
+            'user_id, users!family_members_user_id_fkey(codename, child_password_set_at)')
         .eq('role', 'child')
         .eq('status', 'active');
 
@@ -133,6 +131,7 @@ class FamilyService {
       children.add(FamilyChild(
         id: userId,
         name: user['codename'] as String? ?? 'Child',
+        hasPassword: user['child_password_set_at'] != null,
         devices: devices,
       ));
     }
@@ -218,15 +217,13 @@ class FamilyService {
     required RememberedChild child,
     required String password,
   }) async {
-    final response = await SupabaseConfig.auth.signInWithPassword(
-      email: 'child-${child.id}@questime.local',
-      password: password,
-    );
-    if (response.user == null) throw Exception('Child sign-in failed');
-    await rememberChild(child);
+    await signInPairedDevice(username: child.name, password: password);
   }
 
-  Future<void> signInPairedDevice({required String password}) async {
+  Future<void> signInPairedDevice({
+    required String username,
+    required String password,
+  }) async {
     final preferences = await SharedPreferences.getInstance();
     final installationId =
         preferences.getString('questime_installation_id')?.trim();
@@ -237,6 +234,7 @@ class FamilyService {
       'child-device-login',
       body: {
         'installationId': installationId,
+        'username': username.trim(),
         'password': password,
       },
     );
@@ -262,44 +260,5 @@ class FamilyService {
     );
     final data = Map<String, dynamic>.from(response.data as Map);
     if (data['error'] != null) throw Exception(data['error']);
-  }
-
-  Future<ChildRecoveryCode> createChildRecoveryCode(
-    String childUserId, {
-    bool rotate = false,
-  }) async {
-    final result = await SupabaseConfig.client.rpc(
-      rotate ? 'rotate_child_recovery_code' : 'preview_child_recovery_code',
-      params: {'p_child_user_id': childUserId},
-    );
-    final data = Map<String, dynamic>.from(result as Map);
-    return ChildRecoveryCode(
-      code: data['code'] as String,
-      childUserId: data['child_user_id'] as String,
-    );
-  }
-
-  Future<void> recoverChild(String code) async {
-    final response = await SupabaseConfig.client.functions.invoke(
-      'recover-child',
-      body: {'code': code.trim().toUpperCase()},
-    );
-    final data = Map<String, dynamic>.from(response.data as Map);
-    if (data['error'] != null) throw Exception(data['error']);
-    await SupabaseConfig.auth.verifyOTP(
-      tokenHash: data['tokenHash'] as String,
-      type: OtpType.magiclink,
-    );
-    final userId = SupabaseConfig.auth.currentUser?.id;
-    if (userId == null) return;
-    final profile = await SupabaseConfig.client
-        .from('users')
-        .select('codename')
-        .eq('id', userId)
-        .maybeSingle();
-    await rememberChild(RememberedChild(
-      id: userId,
-      name: profile?['codename'] as String? ?? 'Child',
-    ));
   }
 }
