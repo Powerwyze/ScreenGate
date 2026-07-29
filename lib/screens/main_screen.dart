@@ -389,7 +389,7 @@ class _FamilyScreen extends StatelessWidget {
                       title: child.name,
                       subtitle: 'Paired, waiting for phone details',
                       actionIcon: Icons.key_rounded,
-                      onAction: () => _showChildRecoveryCode(context, child),
+                      onAction: () => _showChildPasswordDialog(context, child),
                     )
                   ];
                 }
@@ -403,7 +403,7 @@ class _FamilyScreen extends StatelessWidget {
                           ? 'Screen time ready'
                           : 'Needs screen time setup',
                       actionIcon: Icons.key_rounded,
-                      onAction: () => _showChildRecoveryCode(context, child),
+                      onAction: () => _showChildPasswordDialog(context, child),
                     ));
               }).toList(),
             );
@@ -751,7 +751,7 @@ class _AttentionRow extends StatelessWidget {
               ])),
           if (onAction != null)
             IconButton(
-              tooltip: 'Child login code',
+              tooltip: 'Child login password',
               onPressed: onAction,
               icon: Icon(actionIcon),
             ),
@@ -806,6 +806,116 @@ Future<void> _showChildRecoveryCode(BuildContext context, FamilyChild child,
       ),
     ),
   );
+}
+
+Future<void> _showChildPasswordDialog(
+  BuildContext context,
+  FamilyChild child,
+) async {
+  final password = TextEditingController();
+  final confirm = TextEditingController();
+  var saving = false;
+  var errorText = '';
+
+  await showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (_, setDialogState) => AlertDialog(
+        title: Text('${child.name}’s password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Your child will use this password after this phone has been paired once.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: password,
+              obscureText: true,
+              enabled: !saving,
+              decoration: const InputDecoration(labelText: 'New password'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirm,
+              obscureText: true,
+              enabled: !saving,
+              decoration: InputDecoration(
+                labelText: 'Confirm password',
+                errorText: errorText.isEmpty ? null : errorText,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: saving
+                ? null
+                : () {
+                    Navigator.pop(dialogContext);
+                    _showChildRecoveryCode(context, child);
+                  },
+            child: const Text('RECOVERY CODE'),
+          ),
+          TextButton(
+            onPressed: saving ? null : () => Navigator.pop(dialogContext),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: saving
+                ? null
+                : () async {
+                    if (password.text.length < 6) {
+                      setDialogState(
+                          () => errorText = 'Use at least 6 characters.');
+                      return;
+                    }
+                    if (password.text != confirm.text) {
+                      setDialogState(
+                          () => errorText = 'The passwords do not match.');
+                      return;
+                    }
+                    setDialogState(() {
+                      saving = true;
+                      errorText = '';
+                    });
+                    try {
+                      await FamilyService().setChildPassword(
+                        childUserId: child.id,
+                        password: password.text,
+                      );
+                      if (!dialogContext.mounted) return;
+                      Navigator.pop(dialogContext);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              '${child.name} can now sign in with that password.'),
+                        ),
+                      );
+                    } catch (_) {
+                      setDialogState(() {
+                        saving = false;
+                        errorText = 'Could not save the password. Try again.';
+                      });
+                    }
+                  },
+            child: saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('SAVE'),
+          ),
+        ],
+      ),
+    ),
+  );
+  password.dispose();
+  confirm.dispose();
 }
 
 class _ActionTile extends StatelessWidget {

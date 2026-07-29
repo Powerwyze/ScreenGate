@@ -20,7 +20,26 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isSignUp = false;
   bool _isLoading = false;
   bool _isRecoveringChild = false;
+  bool _isPairingNewChild = false;
   String? _deviceRole;
+  List<RememberedChild> _rememberedChildren = const [];
+  RememberedChild? _selectedRememberedChild;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedChildren();
+  }
+
+  Future<void> _loadRememberedChildren() async {
+    final children = await FamilyService().getRememberedChildren();
+    if (!mounted || children.isEmpty) return;
+    setState(() {
+      _rememberedChildren = children;
+      _selectedRememberedChild = children.first;
+      _deviceRole = 'child';
+    });
+  }
 
   @override
   void dispose() {
@@ -81,6 +100,36 @@ class _AuthScreenState extends State<AuthScreen> {
       }
     } finally {
       provider.setPairingChild(false);
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _signInRememberedChild() async {
+    final child = _selectedRememberedChild;
+    if (child == null || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter the child password.')),
+      );
+      return;
+    }
+
+    final provider = context.read<AppProvider>();
+    setState(() => _isLoading = true);
+    try {
+      await FamilyService().signInRememberedChild(
+        child: child,
+        password: _passwordController.text,
+      );
+      await provider.reloadProfile();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('That password did not work. Ask your parent.'),
+          ),
+        );
+      }
+    } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -243,7 +292,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'v1.4.1',
+                      'v1.5.0',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: const Color(0xFF8A9AA6),
                           ),
@@ -258,6 +307,9 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _buildChildPhone() {
+    final usePassword = _rememberedChildren.isNotEmpty &&
+        !_isPairingNewChild &&
+        !_isRecoveringChild;
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF9),
       body: SafeArea(
@@ -291,12 +343,48 @@ class _AuthScreenState extends State<AuthScreen> {
               Text(
                 _isRecoveringChild
                     ? 'Enter this phone’s child code.'
-                    : 'Enter the family code from your parent.',
+                    : usePassword
+                        ? 'Welcome back. Enter your password.'
+                        : 'Enter the family code from your parent.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Color(0xFF667684), fontSize: 17),
               ),
               const SizedBox(height: 44),
-              if (!_isRecoveringChild) ...[
+              if (usePassword) ...[
+                DropdownButtonFormField<RememberedChild>(
+                  initialValue: _selectedRememberedChild,
+                  decoration: const InputDecoration(
+                    labelText: 'Child',
+                    prefixIcon: Icon(Icons.face_rounded),
+                  ),
+                  items: _rememberedChildren
+                      .map(
+                        (child) => DropdownMenuItem(
+                          value: child,
+                          child: Text(child.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _isLoading
+                      ? null
+                      : (child) => setState(() {
+                            _selectedRememberedChild = child;
+                            _passwordController.clear();
+                          }),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted:
+                      _isLoading ? null : (_) => _signInRememberedChild(),
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: Icon(Icons.lock_rounded),
+                  ),
+                ),
+              ] else if (!_isRecoveringChild) ...[
                 TextField(
                   controller: _childNameController,
                   textCapitalization: TextCapitalization.words,
@@ -307,27 +395,33 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
-              TextField(
-                controller: _familyCodeController,
-                textAlign: TextAlign.center,
-                textCapitalization: TextCapitalization.characters,
-                maxLength: _isRecoveringChild ? 8 : 6,
-                style: const TextStyle(
-                  color: Color(0xFF17324D),
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 8,
+              if (!usePassword)
+                TextField(
+                  controller: _familyCodeController,
+                  textAlign: TextAlign.center,
+                  textCapitalization: TextCapitalization.characters,
+                  maxLength: _isRecoveringChild ? 8 : 6,
+                  style: const TextStyle(
+                    color: Color(0xFF17324D),
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 8,
+                  ),
+                  decoration: InputDecoration(
+                    labelText:
+                        _isRecoveringChild ? 'Recovery code' : 'Family code',
+                    counterText: '',
+                  ),
                 ),
-                decoration: InputDecoration(
-                  labelText: _isRecoveringChild ? 'Child code' : 'Family code',
-                  counterText: '',
-                ),
-              ),
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: _isLoading ? null : _joinFamily,
+                  onPressed: _isLoading
+                      ? null
+                      : usePassword
+                          ? _signInRememberedChild
+                          : _joinFamily,
                   icon: _isLoading
                       ? const SizedBox(
                           width: 18,
@@ -337,9 +431,11 @@ class _AuthScreenState extends State<AuthScreen> {
                       : const Icon(Icons.link_rounded),
                   label: Text(_isLoading
                       ? 'CONNECTING...'
-                      : _isRecoveringChild
+                      : usePassword
                           ? 'OPEN MY QUESTS'
-                          : 'JOIN MY FAMILY'),
+                          : _isRecoveringChild
+                              ? 'OPEN MY QUESTS'
+                              : 'JOIN MY FAMILY'),
                 ),
               ),
               const SizedBox(height: 28),
@@ -347,19 +443,46 @@ class _AuthScreenState extends State<AuthScreen> {
                 onPressed: _isLoading
                     ? null
                     : () => setState(() {
-                          _isRecoveringChild = !_isRecoveringChild;
+                          if (usePassword) {
+                            _isPairingNewChild = true;
+                            _isRecoveringChild = false;
+                          } else if (_isRecoveringChild) {
+                            _isPairingNewChild = true;
+                            _isRecoveringChild = false;
+                          } else if (_rememberedChildren.isNotEmpty) {
+                            _isPairingNewChild = false;
+                            _isRecoveringChild = false;
+                          } else {
+                            _isPairingNewChild = false;
+                            _isRecoveringChild = true;
+                          }
                           _familyCodeController.clear();
                         }),
-                child: Text(_isRecoveringChild
-                    ? 'This is a new child phone'
-                    : 'This phone was paired before'),
+                child: Text(usePassword
+                    ? 'Pair a different child'
+                    : _isRecoveringChild
+                        ? 'Use a family pairing code'
+                        : _rememberedChildren.isEmpty
+                            ? 'This phone was paired before'
+                            : 'Back to child sign in'),
               ),
-              const Text(
-                'One code. Same child. Same quests.',
-                style: TextStyle(
-                  color: Color(0xFF0B8F87),
-                  fontWeight: FontWeight.w700,
+              if (!usePassword && !_isRecoveringChild)
+                TextButton(
+                  onPressed: _isLoading
+                      ? null
+                      : () => setState(() {
+                            _isRecoveringChild = true;
+                            _isPairingNewChild = false;
+                            _familyCodeController.clear();
+                          }),
+                  child: const Text('Use a recovery code'),
                 ),
+              Text(
+                usePassword
+                    ? 'No pairing code needed.'
+                    : 'Pairing is only needed once.',
+                style: const TextStyle(
+                    color: Color(0xFF0B8F87), fontWeight: FontWeight.w700),
               ),
               TextButton.icon(
                 onPressed: _isLoading

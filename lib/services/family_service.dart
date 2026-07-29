@@ -1,5 +1,23 @@
+import 'dart:convert';
+
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskassassin/supabase/supabase_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+class RememberedChild {
+  final String id;
+  final String name;
+
+  const RememberedChild({required this.id, required this.name});
+
+  factory RememberedChild.fromJson(Map<String, dynamic> json) =>
+      RememberedChild(
+        id: json['id'] as String,
+        name: json['name'] as String,
+      );
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+}
 
 class FamilyChild {
   final String id;
@@ -61,6 +79,8 @@ class ChildRecoveryCode {
 }
 
 class FamilyService {
+  static const _rememberedChildrenKey = 'remembered_child_accounts';
+
   Future<void> saveScreenTimeRule({
     required String childUserId,
     required int dailyLimitMinutes,
@@ -135,17 +155,76 @@ class FamilyService {
     }
 
     try {
-      await SupabaseConfig.client.rpc(
+      final result = await SupabaseConfig.client.rpc(
         'join_family_with_code',
         params: {
           'pairing_code': code.trim().toUpperCase(),
           'child_name': childName.trim(),
         },
       );
+      final data = Map<String, dynamic>.from(result as Map);
+      await rememberChild(RememberedChild(
+        id: data['child_user_id'] as String,
+        name: childName.trim(),
+      ));
     } catch (_) {
       if (createdAnonymousSession) await SupabaseConfig.auth.signOut();
       rethrow;
     }
+  }
+
+  Future<List<RememberedChild>> getRememberedChildren() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_rememberedChildrenKey);
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      return (jsonDecode(raw) as List)
+          .map((item) =>
+              RememberedChild.fromJson(Map<String, dynamic>.from(item as Map)))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> rememberChild(RememberedChild child) async {
+    final preferences = await SharedPreferences.getInstance();
+    final children = await getRememberedChildren();
+    final updated = [
+      child,
+      ...children.where((existing) => existing.id != child.id),
+    ];
+    await preferences.setString(
+      _rememberedChildrenKey,
+      jsonEncode(updated.map((item) => item.toJson()).toList()),
+    );
+  }
+
+  Future<void> signInRememberedChild({
+    required RememberedChild child,
+    required String password,
+  }) async {
+    final response = await SupabaseConfig.auth.signInWithPassword(
+      email: 'child-${child.id}@questime.local',
+      password: password,
+    );
+    if (response.user == null) throw Exception('Child sign-in failed');
+    await rememberChild(child);
+  }
+
+  Future<void> setChildPassword({
+    required String childUserId,
+    required String password,
+  }) async {
+    final response = await SupabaseConfig.client.functions.invoke(
+      'set-child-password',
+      body: {
+        'childUserId': childUserId,
+        'password': password,
+      },
+    );
+    final data = Map<String, dynamic>.from(response.data as Map);
+    if (data['error'] != null) throw Exception(data['error']);
   }
 
   Future<ChildRecoveryCode> createChildRecoveryCode(
@@ -174,5 +253,16 @@ class FamilyService {
       tokenHash: data['tokenHash'] as String,
       type: OtpType.magiclink,
     );
+    final userId = SupabaseConfig.auth.currentUser?.id;
+    if (userId == null) return;
+    final profile = await SupabaseConfig.client
+        .from('users')
+        .select('codename')
+        .eq('id', userId)
+        .maybeSingle();
+    await rememberChild(RememberedChild(
+      id: userId,
+      name: profile?['codename'] as String? ?? 'Child',
+    ));
   }
 }
