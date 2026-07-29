@@ -30,6 +30,7 @@ class FamilyChild {
 
 class QuestimeDevice {
   final String id;
+  final String installationId;
   final String platform;
   final String name;
   final bool screenTimeAuthorized;
@@ -38,6 +39,7 @@ class QuestimeDevice {
 
   const QuestimeDevice({
     required this.id,
+    required this.installationId,
     required this.platform,
     required this.name,
     required this.screenTimeAuthorized,
@@ -47,6 +49,7 @@ class QuestimeDevice {
 
   factory QuestimeDevice.fromJson(Map<String, dynamic> json) => QuestimeDevice(
         id: json['id'] as String? ?? '',
+        installationId: json['installation_id'] as String? ?? '',
         platform: json['platform'] as String? ?? 'unknown',
         name: json['device_name'] as String? ?? 'Child phone',
         screenTimeAuthorized: json['screen_time_authorized'] as bool? ?? false,
@@ -122,13 +125,15 @@ class FamilyService {
           .eq('user_id', userId)
           .order('last_seen_at', ascending: false);
       final user = Map<String, dynamic>.from(data['users'] as Map);
+      final devices = (deviceRows as List)
+          .map((item) =>
+              QuestimeDevice.fromJson(Map<String, dynamic>.from(item)))
+          .where((device) => device.installationId != 'ios-$userId')
+          .toList();
       children.add(FamilyChild(
         id: userId,
         name: user['codename'] as String? ?? 'Child',
-        devices: (deviceRows as List)
-            .map((item) =>
-                QuestimeDevice.fromJson(Map<String, dynamic>.from(item)))
-            .toList(),
+        devices: devices,
       ));
     }
     return children;
