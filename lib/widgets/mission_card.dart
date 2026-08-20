@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:taskassassin/models/mission.dart';
-import 'package:taskassassin/theme.dart';
+import 'package:screengate/models/mission.dart';
+import 'package:screengate/theme.dart';
 
 class MissionCard extends StatelessWidget {
   final Mission mission;
@@ -52,19 +52,24 @@ class MissionCard extends StatelessWidget {
                             Icon(
                               Icons.calendar_today,
                               size: 12,
-                              color: mission.isOverdue ? CyberpunkColors.error : CyberpunkColors.textMuted,
+                              color: mission.isOverdue
+                                  ? CyberpunkColors.error
+                                  : CyberpunkColors.textMuted,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               'Due: ${DateFormat('yyyy-MM-dd').format(mission.deadline!)}',
                               style: context.textStyles.labelSmall!.copyWith(
-                                color: mission.isOverdue ? CyberpunkColors.error : CyberpunkColors.textMuted,
+                                color: mission.isOverdue
+                                    ? CyberpunkColors.error
+                                    : CyberpunkColors.textMuted,
                               ),
                             ),
-                            if (mission.type == MissionType.aiSuggested || 
+                            if (mission.type == MissionType.aiSuggested ||
                                 mission.type == MissionType.friendAssigned) ...[
                               const SizedBox(width: 8),
-                              Icon(Icons.person, size: 12, color: CyberpunkColors.neonOrange),
+                              Icon(Icons.person,
+                                  size: 12, color: CyberpunkColors.neonOrange),
                               const SizedBox(width: 2),
                               Text(
                                 'FROM: ${_getTypeText().toUpperCase()}',
@@ -111,7 +116,8 @@ class MissionCard extends StatelessWidget {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check, color: CyberpunkColors.neonGreen, size: 16),
+                          Icon(Icons.check,
+                              color: CyberpunkColors.neonGreen, size: 16),
                         ],
                       ),
                     const SizedBox(width: 4),
@@ -130,7 +136,9 @@ class MissionCard extends StatelessWidget {
                 children: List.generate(
                   5,
                   (index) => Icon(
-                    index < mission.starsEarned ? Icons.star : Icons.star_border,
+                    index < mission.starsEarned
+                        ? Icons.star
+                        : Icons.star_border,
                     size: 16,
                     color: CyberpunkColors.neonOrange,
                   ),

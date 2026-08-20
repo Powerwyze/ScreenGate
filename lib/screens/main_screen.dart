@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:taskassassin/models/mission.dart';
-import 'package:taskassassin/models/user.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/services/family_service.dart';
-import 'package:taskassassin/services/parent_gate_service.dart';
-import 'package:taskassassin/services/screen_time_service.dart';
+import 'package:screengate/models/mission.dart';
+import 'package:screengate/models/user.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/services/family_service.dart';
+import 'package:screengate/services/parent_gate_service.dart';
+import 'package:screengate/services/screen_time_service.dart';
 
 const _ink = Color(0xFF17324D);
 const _teal = Color(0xFF0B8F87);
@@ -117,7 +117,7 @@ class _ParentHomeState extends State<_ParentHome> {
               return const _HeroPanel(
                 icon: Icons.sync_rounded,
                 title: 'Checking your family',
-                body: 'Loading the phones connected to Questime.',
+                body: 'Loading the phones connected to ScreenGate.',
                 action: 'LOADING',
                 onTap: null,
               );
@@ -163,7 +163,8 @@ class _ParentHomeState extends State<_ParentHome> {
                   icon: Icons.devices_rounded,
                   title:
                       '$phoneCount child ${phoneCount == 1 ? 'phone' : 'phones'} connected',
-                  body: 'Choose a child below to see their Questime activity.',
+                  body:
+                      'Choose a child below to see their ScreenGate activity.',
                   action: 'REFRESH',
                   onTap: _refresh,
                 ),
@@ -363,7 +364,7 @@ class _FamilyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return _Page(
       title: 'Family',
-      subtitle: 'The phones connected to Questime',
+      subtitle: 'The phones connected to ScreenGate',
       children: [
         FutureBuilder<List<FamilyChild>>(
           future: FamilyService().getChildren(),
@@ -376,7 +377,7 @@ class _FamilyScreen extends StatelessWidget {
               return const _EmptyState(
                 icon: Icons.family_restroom_rounded,
                 title: 'Add your child',
-                body: 'Install Questime on their phone, then pair it here.',
+                body: 'Install ScreenGate on their phone, then pair it here.',
               );
             }
             return Column(
@@ -1165,13 +1166,13 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
                 _SetupStep(
                   number: '2',
                   title: status?.authorized == true
-                      ? 'Questime control is on'
-                      : 'Allow Questime to block apps',
+                      ? 'ScreenGate control is on'
+                      : 'Allow ScreenGate to block apps',
                   detail: status?.authorized == true
                       ? widget.soloMode
                           ? 'Complete your own quests to earn access.'
-                          : 'Questime can now stop selected apps.'
-                      : 'On the next screen, tap Questime and turn it on.',
+                          : 'ScreenGate can now stop selected apps.'
+                      : 'On the next screen, tap ScreenGate and turn it on.',
                   complete: status?.authorized == true,
                   action: status?.authorized == true ? _checkAgain : _enable,
                   actionLabel: status?.authorized == true ? 'CHECK' : 'TURN ON',

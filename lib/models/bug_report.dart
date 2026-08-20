@@ -1,5 +1,5 @@
-
 enum BugSeverity { low, medium, high, critical }
+
 enum BugStatus { open, inProgress, resolved, closed }
 
 class BugReport {
@@ -30,24 +30,25 @@ class BugReport {
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'user_id': userId,
-    'user_email': userEmail,
-    'title': title,
-    'description': description,
-    'severity': severity.name,
-    'status': status.name,
-    'device_info': deviceInfo,
-    'app_version': appVersion,
-    'created_at': createdAt.toIso8601String(),
-    'updated_at': updatedAt.toIso8601String(),
-  };
+        'id': id,
+        'user_id': userId,
+        'user_email': userEmail,
+        'title': title,
+        'description': description,
+        'severity': severity.name,
+        'status': status.name,
+        'device_info': deviceInfo,
+        'app_version': appVersion,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+      };
 
   factory BugReport.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic value) {
       if (value is String) return DateTime.parse(value);
       return DateTime.now();
     }
+
     return BugReport(
       id: json['id'] as String,
       userId: json['user_id'] as String,
@@ -81,17 +82,18 @@ class BugReport {
     String? appVersion,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) => BugReport(
-    id: id ?? this.id,
-    userId: userId ?? this.userId,
-    userEmail: userEmail ?? this.userEmail,
-    title: title ?? this.title,
-    description: description ?? this.description,
-    severity: severity ?? this.severity,
-    status: status ?? this.status,
-    deviceInfo: deviceInfo ?? this.deviceInfo,
-    appVersion: appVersion ?? this.appVersion,
-    createdAt: createdAt ?? this.createdAt,
-    updatedAt: updatedAt ?? this.updatedAt,
-  );
+  }) =>
+      BugReport(
+        id: id ?? this.id,
+        userId: userId ?? this.userId,
+        userEmail: userEmail ?? this.userEmail,
+        title: title ?? this.title,
+        description: description ?? this.description,
+        severity: severity ?? this.severity,
+        status: status ?? this.status,
+        deviceInfo: deviceInfo ?? this.deviceInfo,
+        appVersion: appVersion ?? this.appVersion,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
 }

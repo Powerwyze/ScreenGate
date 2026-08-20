@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:taskassassin/theme.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/screens/onboarding_screen.dart';
-import 'package:taskassassin/screens/main_screen.dart';
-import 'package:taskassassin/screens/create_mission_screen.dart';
-import 'package:taskassassin/screens/mission_detail_screen.dart';
-import 'package:taskassassin/screens/handler_chat_screen.dart';
-import 'package:taskassassin/screens/handler_selection_screen.dart';
-import 'package:taskassassin/screens/auth_screen.dart';
-import 'package:taskassassin/screens/notifications_screen.dart';
-import 'package:taskassassin/screens/bug_report_screen.dart';
-import 'package:taskassassin/models/mission.dart';
-import 'package:taskassassin/models/user.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
-import 'package:taskassassin/screens/progress_screen.dart';
-import 'package:taskassassin/screens/leaderboard_screen.dart';
-import 'package:taskassassin/screens/direct_message_screen.dart';
-import 'package:taskassassin/services/push_notification_service.dart';
+import 'package:screengate/theme.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/screens/onboarding_screen.dart';
+import 'package:screengate/screens/main_screen.dart';
+import 'package:screengate/screens/create_mission_screen.dart';
+import 'package:screengate/screens/mission_detail_screen.dart';
+import 'package:screengate/screens/handler_chat_screen.dart';
+import 'package:screengate/screens/handler_selection_screen.dart';
+import 'package:screengate/screens/auth_screen.dart';
+import 'package:screengate/screens/notifications_screen.dart';
+import 'package:screengate/screens/bug_report_screen.dart';
+import 'package:screengate/models/mission.dart';
+import 'package:screengate/models/user.dart';
+import 'package:screengate/supabase/supabase_config.dart';
+import 'package:screengate/screens/progress_screen.dart';
+import 'package:screengate/screens/leaderboard_screen.dart';
+import 'package:screengate/screens/direct_message_screen.dart';
+import 'package:screengate/services/push_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -218,7 +218,7 @@ class _MyAppState extends State<MyApp> {
     }
 
     return MaterialApp.router(
-      title: 'Questime',
+      title: 'ScreenGate',
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,

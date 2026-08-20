@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import 'package:taskassassin/models/mission.dart';
-import 'package:taskassassin/models/notification.dart';
-import 'package:taskassassin/services/notification_service.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/models/mission.dart';
+import 'package:screengate/models/notification.dart';
+import 'package:screengate/services/notification_service.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 
 class MissionService {
   late final NotificationService _notificationService;

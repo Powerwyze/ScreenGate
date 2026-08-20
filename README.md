@@ -1,15 +1,15 @@
-# Questime
+# ScreenGate
 
-Questime turns time into quests with AI verification, personalized Handler coaching, and social accountability.
+ScreenGate turns time into quests with AI verification, personalized Handler coaching, and social accountability.
 
-This repository is pivoting from the TaskAssassin prototype. The Flutter package name is still `taskassassin` for now to avoid a risky mechanical import rewrite during the product pivot.
+This repository contains the ScreenGate Flutter app. The Dart package name is `screengate`.
 
 ## What Changed In The Pivot
 
-- Product-facing app name is Questime.
-- Android and web metadata now use Questime branding.
+- Product-facing app name is ScreenGate.
+- Android and web metadata now use ScreenGate branding.
 - Android application ID is prepared as `com.powerwyze.questime`.
-- iOS display metadata now uses Questime branding.
+- iOS display metadata now uses ScreenGate branding.
 - The Flutter app no longer packages `.env` as an asset.
 - Gemini calls are routed through the Supabase `gemini-chat` Edge Function.
 - Gemini API keys belong in Supabase Edge Function secrets, never in the Flutter client.

@@ -33,14 +33,14 @@ class MainActivity : FlutterActivity() {
                 "getInstalledApps" -> result.success(installedApps())
                 "getConfiguration" -> result.success(
                     mapOf(
-                        "packages" to QuestimeControlStore.blockedPackages(this).toList(),
-                        "remainingSeconds" to QuestimeControlStore.remainingSeconds(this),
+                        "packages" to ScreenGateControlStore.blockedPackages(this).toList(),
+                        "remainingSeconds" to ScreenGateControlStore.remainingSeconds(this),
                     ),
                 )
                 "configure" -> {
                     val packages = call.argument<List<String>>("packages")?.toSet()
                     val awardedMinutes = call.argument<Int>("awardedMinutes") ?: 0
-                    QuestimeControlStore.configure(this, packages, awardedMinutes)
+                    ScreenGateControlStore.configure(this, packages, awardedMinutes)
                     result.success(null)
                 }
                 else -> result.notImplemented()

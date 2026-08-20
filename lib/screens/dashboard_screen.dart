@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/models/mission.dart';
-import 'package:taskassassin/theme.dart';
-import 'package:taskassassin/widgets/mission_card.dart';
-import 'package:taskassassin/models/user.dart' as model_user;
-import 'package:taskassassin/services/pwa_install_service.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/models/mission.dart';
+import 'package:screengate/theme.dart';
+import 'package:screengate/widgets/mission_card.dart';
+import 'package:screengate/models/user.dart' as model_user;
+import 'package:screengate/services/pwa_install_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -17,7 +17,13 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  static const List<String> _filters = ['ALL', 'EXECUTE', 'EXECUTED', 'FAILED', 'SCHEDULED'];
+  static const List<String> _filters = [
+    'ALL',
+    'EXECUTE',
+    'EXECUTED',
+    'FAILED',
+    'SCHEDULED'
+  ];
   int _selectedFilter = 0;
 
   @override
@@ -33,8 +39,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Consumer<AppProvider>(
           builder: (context, provider, _) {
             final user = provider.currentUser;
-            final handler = provider.currentHandler ?? provider.handlerService.getDefaultHandler();
-            
+            final handler = provider.currentHandler ??
+                provider.handlerService.getDefaultHandler();
+
             if (user == null) {
               if (provider.isAuthenticated) {
                 return FutureBuilder(
@@ -54,7 +61,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            Text('LOADING...', style: context.textStyles.labelMedium),
+                            Text('LOADING...',
+                                style: context.textStyles.labelMedium),
                           ],
                         ),
                       );
@@ -65,19 +73,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.account_circle, size: 48, color: CyberpunkColors.neonTeal),
+                            Icon(Icons.account_circle,
+                                size: 48, color: CyberpunkColors.neonTeal),
                             const SizedBox(height: 12),
-                            Text('COMPLETE YOUR PROFILE', style: context.textStyles.titleLarge),
+                            Text('COMPLETE YOUR PROFILE',
+                                style: context.textStyles.titleLarge),
                             const SizedBox(height: 8),
                             Text(
                               'We couldn\'t find your profile. Tap below to finish onboarding.',
-                              style: context.textStyles.bodyMedium!.withColor(CyberpunkColors.textSecondary),
+                              style: context.textStyles.bodyMedium!
+                                  .withColor(CyberpunkColors.textSecondary),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 16),
                             FilledButton.icon(
                               onPressed: () => context.go('/onboarding'),
-                              icon: Icon(Icons.rocket_launch, color: CyberpunkColors.background),
+                              icon: Icon(Icons.rocket_launch,
+                                  color: CyberpunkColors.background),
                               label: const Text('FINISH ONBOARDING'),
                             )
                           ],
@@ -88,7 +100,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 );
               }
               return Center(
-                child: CircularProgressIndicator(color: CyberpunkColors.neonTeal),
+                child:
+                    CircularProgressIndicator(color: CyberpunkColors.neonTeal),
               );
             }
 
@@ -115,9 +128,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           // Email List Sign-up Button (at top)
                           _EmailListButton(
                             onTap: () async {
-                              final url = Uri.parse('https://docs.google.com/forms/d/e/1FAIpQLSfOFl-YlIriHMdIxinbBAIeNc9sQ_vSuf5opaKvODSHAE-jMg/viewform?usp=header');
+                              final url = Uri.parse(
+                                  'https://docs.google.com/forms/d/e/1FAIpQLSfOFl-YlIriHMdIxinbBAIeNc9sQ_vSuf5opaKvODSHAE-jMg/viewform?usp=header');
                               if (await canLaunchUrl(url)) {
-                                await launchUrl(url, mode: LaunchMode.externalApplication);
+                                await launchUrl(url,
+                                    mode: LaunchMode.externalApplication);
                               }
                             },
                           ),
@@ -125,11 +140,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           // Invite a Friend Button
                           _InviteFriendButton(
                             onTap: () async {
-                              final subject = Uri.encodeComponent('Check out TaskAssassin!');
+                              final subject =
+                                  Uri.encodeComponent('Check out ScreenGate!');
                               final body = Uri.encodeComponent(
-                                'Hey! I\'ve been using TaskAssassin to track my goals and stay accountable. You should check it out: taskassassin.com'
-                              );
-                              final url = Uri.parse('mailto:?subject=$subject&body=$body');
+                                  'Hey! I\'ve been using ScreenGate to turn completed tasks into screen time. You should check it out!');
+                              final url = Uri.parse(
+                                  'mailto:?subject=$subject&body=$body');
                               if (await canLaunchUrl(url)) {
                                 await launchUrl(url);
                               }
@@ -141,9 +157,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               final messenger = ScaffoldMessenger.of(context);
 
                               final blocker = getPwaInstallBlocker();
-                              if (blocker != null || !canShowPwaInstallPrompt()) {
+                              if (blocker != null ||
+                                  !canShowPwaInstallPrompt()) {
                                 messenger.showSnackBar(
-                                  SnackBar(content: Text(blocker ?? 'Add to Home Screen is not available right now.')),
+                                  SnackBar(
+                                      content: Text(blocker ??
+                                          'Add to Home Screen is not available right now.')),
                                 );
                                 return;
                               }
@@ -221,15 +240,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             future: () async {
                               final prov = context.read<AppProvider>();
                               final uid = prov.currentUser!.id;
-                              final ids = await prov.friendService.getAcceptedFriendUserIds(uid);
+                              final ids = await prov.friendService
+                                  .getAcceptedFriendUserIds(uid);
                               return prov.userService.getUsersByIds(ids);
                             }(),
                             builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
                                 return const SizedBox.shrink();
                               }
-                              final friends = snapshot.data ?? const <model_user.User>[];
-                              if (friends.isEmpty) return const SizedBox.shrink();
+                              final friends =
+                                  snapshot.data ?? const <model_user.User>[];
+                              if (friends.isEmpty)
+                                return const SizedBox.shrink();
 
                               return _FriendsSection(friends: friends);
                             },
@@ -239,7 +262,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('GOALS BY STATUS', style: context.textStyles.labelMedium),
+                              Text('GOALS BY STATUS',
+                                  style: context.textStyles.labelMedium),
                               Row(
                                 children: [
                                   _SmallChipButton(
@@ -252,7 +276,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     icon: Icons.add,
                                     label: 'NEW GOAL',
                                     isPrimary: true,
-                                    onTap: () => context.push('/create-mission'),
+                                    onTap: () =>
+                                        context.push('/create-mission'),
                                   ),
                                 ],
                               ),
@@ -263,7 +288,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           _FilterChips(
                             filters: _filters,
                             selectedIndex: _selectedFilter,
-                            onSelected: (index) => setState(() => _selectedFilter = index),
+                            onSelected: (index) =>
+                                setState(() => _selectedFilter = index),
                           ),
                           const SizedBox(height: 12),
                         ],
@@ -276,9 +302,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.flag_outlined, size: 48, color: CyberpunkColors.neonTeal),
+                            Icon(Icons.flag_outlined,
+                                size: 48, color: CyberpunkColors.neonTeal),
                             const SizedBox(height: 16),
-                            Text('NO GOALS HERE', style: context.textStyles.titleMedium),
+                            Text('NO GOALS HERE',
+                                style: context.textStyles.titleMedium),
                             const SizedBox(height: 8),
                             Text(
                               'No goals in the ${_filters[_selectedFilter]} tab yet.',
@@ -298,10 +326,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             final mission = filteredMissions[index];
                             return MissionCard(
                               mission: mission,
-                              onTap: () => context.push('/mission-detail', extra: mission),
+                              onTap: () => context.push('/mission-detail',
+                                  extra: mission),
                             );
                           },
-                          childCount: filteredMissions.length > 5 ? 5 : filteredMissions.length,
+                          childCount: filteredMissions.length > 5
+                              ? 5
+                              : filteredMissions.length,
                         ),
                       ),
                     ),
@@ -319,18 +350,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     switch (_selectedFilter) {
       case 1: // EXECUTE
-        filtered = missions.where((m) => m.status == MissionStatus.inProgress).toList();
+        filtered = missions
+            .where((m) => m.status == MissionStatus.inProgress)
+            .toList();
         break;
       case 2: // EXECUTED
         filtered = missions
-            .where((m) => m.status == MissionStatus.completed || m.status == MissionStatus.verified)
+            .where((m) =>
+                m.status == MissionStatus.completed ||
+                m.status == MissionStatus.verified)
             .toList();
         break;
       case 3: // FAILED
-        filtered = missions.where((m) => m.status == MissionStatus.failed).toList();
+        filtered =
+            missions.where((m) => m.status == MissionStatus.failed).toList();
         break;
       case 4: // SCHEDULED
-        filtered = missions.where((m) => m.status == MissionStatus.pending).toList();
+        filtered =
+            missions.where((m) => m.status == MissionStatus.pending).toList();
         break;
       default:
         filtered = List.from(missions);
@@ -352,7 +389,7 @@ class _CyberpunkHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // App Logo - Using the TaskAssassin logo image
+        // App Logo - Using the ScreenGate logo image
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: Image.asset(
@@ -361,7 +398,8 @@ class _CyberpunkHeader extends StatelessWidget {
             height: 44,
             fit: BoxFit.cover,
             // If the asset fails to load, render nothing to avoid any placeholder artifacts
-            errorBuilder: (context, error, stackTrace) => const SizedBox(width: 44, height: 44),
+            errorBuilder: (context, error, stackTrace) =>
+                const SizedBox(width: 44, height: 44),
           ),
         ),
         const SizedBox(width: 12),
@@ -374,11 +412,13 @@ class _CyberpunkHeader extends StatelessWidget {
                 children: [
                   TextSpan(
                     text: 'TASK',
-                    style: context.textStyles.titleLarge!.copyWith(color: AppColors.cream),
+                    style: context.textStyles.titleLarge!
+                        .copyWith(color: AppColors.cream),
                   ),
                   TextSpan(
                     text: 'ASSASSIN',
-                    style: context.textStyles.titleLarge!.copyWith(color: AppColors.checkGreen),
+                    style: context.textStyles.titleLarge!
+                        .copyWith(color: AppColors.checkGreen),
                   ),
                 ],
               ),
@@ -485,7 +525,8 @@ class _CyberpunkStatCard extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: context.textStyles.labelSmall!.copyWith(color: CyberpunkColors.textMuted),
+                  style: context.textStyles.labelSmall!
+                      .copyWith(color: CyberpunkColors.textMuted),
                 ),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -493,12 +534,14 @@ class _CyberpunkStatCard extends StatelessWidget {
                   children: [
                     Text(
                       value,
-                      style: context.textStyles.headlineSmall!.copyWith(color: color),
+                      style: context.textStyles.headlineSmall!
+                          .copyWith(color: color),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       valueLabel,
-                      style: context.textStyles.labelSmall!.copyWith(color: color),
+                      style:
+                          context.textStyles.labelSmall!.copyWith(color: color),
                     ),
                   ],
                 ),
@@ -519,7 +562,7 @@ class _XpProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = user.starsInCurrentLevel / user.nextLevelStars;
-    
+
     return Container(
       padding: AppSpacing.paddingMd,
       decoration: BoxDecoration(
@@ -536,7 +579,8 @@ class _XpProgressCard extends StatelessWidget {
               Text('XP Progress', style: context.textStyles.labelMedium),
               Text(
                 '${user.starsInCurrentLevel}/${user.nextLevelStars}',
-                style: context.textStyles.labelMedium!.copyWith(color: CyberpunkColors.neonTeal),
+                style: context.textStyles.labelMedium!
+                    .copyWith(color: CyberpunkColors.neonTeal),
               ),
             ],
           ),
@@ -558,12 +602,16 @@ class _XpProgressCard extends StatelessWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [CyberpunkColors.neonMagenta, CyberpunkColors.neonTeal],
+                          colors: [
+                            CyberpunkColors.neonMagenta,
+                            CyberpunkColors.neonTeal
+                          ],
                         ),
                         borderRadius: BorderRadius.circular(4),
                         boxShadow: [
                           BoxShadow(
-                            color: CyberpunkColors.neonTeal.withValues(alpha: 0.5),
+                            color:
+                                CyberpunkColors.neonTeal.withValues(alpha: 0.5),
                             blurRadius: 8,
                             spreadRadius: 0,
                           ),
@@ -675,9 +723,12 @@ class _FriendsSection extends StatelessWidget {
                         CircleAvatar(
                           radius: 22,
                           backgroundColor: CyberpunkColors.border,
-                          backgroundImage: friend.avatarUrl != null ? NetworkImage(friend.avatarUrl!) : null,
+                          backgroundImage: friend.avatarUrl != null
+                              ? NetworkImage(friend.avatarUrl!)
+                              : null,
                           child: friend.avatarUrl == null
-                              ? Icon(Icons.person, color: CyberpunkColors.textMuted)
+                              ? Icon(Icons.person,
+                                  color: CyberpunkColors.textMuted)
                               : null,
                         ),
                         const SizedBox(height: 6),
@@ -721,10 +772,13 @@ class _SmallChipButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isPrimary ? CyberpunkColors.neonTeal : CyberpunkColors.surfaceVariant,
+          color: isPrimary
+              ? CyberpunkColors.neonTeal
+              : CyberpunkColors.surfaceVariant,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isPrimary ? CyberpunkColors.neonTeal : CyberpunkColors.border,
+            color:
+                isPrimary ? CyberpunkColors.neonTeal : CyberpunkColors.border,
           ),
         ),
         child: Row(
@@ -733,13 +787,17 @@ class _SmallChipButton extends StatelessWidget {
             Icon(
               icon,
               size: 14,
-              color: isPrimary ? CyberpunkColors.background : CyberpunkColors.textSecondary,
+              color: isPrimary
+                  ? CyberpunkColors.background
+                  : CyberpunkColors.textSecondary,
             ),
             const SizedBox(width: 4),
             Text(
               label,
               style: context.textStyles.labelSmall!.copyWith(
-                color: isPrimary ? CyberpunkColors.background : CyberpunkColors.textSecondary,
+                color: isPrimary
+                    ? CyberpunkColors.background
+                    : CyberpunkColors.textSecondary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -773,18 +831,25 @@ class _FilterChips extends StatelessWidget {
             child: GestureDetector(
               onTap: () => onSelected(index),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? CyberpunkColors.surfaceVariant : Colors.transparent,
+                  color: isSelected
+                      ? CyberpunkColors.surfaceVariant
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: isSelected ? CyberpunkColors.neonTeal : CyberpunkColors.border,
+                    color: isSelected
+                        ? CyberpunkColors.neonTeal
+                        : CyberpunkColors.border,
                   ),
                 ),
                 child: Text(
                   filters[index],
                   style: context.textStyles.labelSmall!.copyWith(
-                    color: isSelected ? CyberpunkColors.textPrimary : CyberpunkColors.textMuted,
+                    color: isSelected
+                        ? CyberpunkColors.textPrimary
+                        : CyberpunkColors.textMuted,
                   ),
                 ),
               ),
@@ -928,7 +993,8 @@ class _DownloadWebAppButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.download_for_offline_outlined, color: Colors.white, size: 20),
+            Icon(Icons.download_for_offline_outlined,
+                color: Colors.white, size: 20),
             const SizedBox(width: 10),
             Flexible(
               child: Text(

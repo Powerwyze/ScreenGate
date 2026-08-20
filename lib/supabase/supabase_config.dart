@@ -1,8 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
-import 'package:taskassassin/network/platform_http_client.dart';
+import 'package:screengate/network/platform_http_client.dart';
 
-/// Supabase configuration for Questime.
+/// Supabase configuration for ScreenGate.
 ///
 /// Release builds can override these values without editing source:
 /// --dart-define=SUPABASE_URL=...

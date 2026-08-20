@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:taskassassin/models/mission.dart';
+import 'package:screengate/models/mission.dart';
 
 void main() {
   group('Mission', () {

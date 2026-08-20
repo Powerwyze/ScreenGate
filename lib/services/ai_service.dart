@@ -1,23 +1,23 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:taskassassin/models/handler.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/models/handler.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 
 class AIService {
   static const String _functionName = 'gemini-chat';
 
   Map<String, dynamic> _handlerPayload(Handler handler) => {
-    'id': handler.id,
-    'name': handler.name,
-    'category': handler.category,
-    'description': handler.description,
-    'personalityStyle': handler.personalityStyle,
-    'personality_style': handler.personalityStyle,
-    'avatar': handler.avatar,
-    'greetingMessage': handler.greetingMessage,
-    'greeting_message': handler.greetingMessage,
-  };
+        'id': handler.id,
+        'name': handler.name,
+        'category': handler.category,
+        'description': handler.description,
+        'personalityStyle': handler.personalityStyle,
+        'personality_style': handler.personalityStyle,
+        'avatar': handler.avatar,
+        'greetingMessage': handler.greetingMessage,
+        'greeting_message': handler.greetingMessage,
+      };
 
   Future<Map<String, dynamic>> _invokeGemini(
     String action,
@@ -77,10 +77,12 @@ class AIService {
     String? afterPhotoDescription,
   }) async {
     if (afterPhotoUrl == null || afterPhotoUrl.isEmpty) {
-      debugPrint('[AIService] Strict verify: missing AFTER image -> cannot verify');
+      debugPrint(
+          '[AIService] Strict verify: missing AFTER image -> cannot verify');
       return {
         'stars': 1,
-        'feedback': 'I can\'t verify completion without an AFTER photo that clearly shows the result. Please upload an after photo matching the done criteria.',
+        'feedback':
+            'I can\'t verify completion without an AFTER photo that clearly shows the result. Please upload an after photo matching the done criteria.',
       };
     }
 
@@ -99,7 +101,8 @@ class AIService {
 
       return {
         'stars': _coerceStars(result['stars']),
-        'feedback': result['feedback']?.toString() ?? 'Great job completing this quest!',
+        'feedback': result['feedback']?.toString() ??
+            'Great job completing this quest!',
       };
     } catch (e) {
       debugPrint('[AIService] Verify mission error: $e');
@@ -135,12 +138,13 @@ class AIService {
     required List<Map<String, String>> conversationHistory,
     required String userMessage,
     String? userProfileContext,
-  }) => getHandlerResponse(
-    handler: handler,
-    conversationHistory: conversationHistory,
-    userMessage: userMessage,
-    userProfileContext: userProfileContext,
-  );
+  }) =>
+      getHandlerResponse(
+        handler: handler,
+        conversationHistory: conversationHistory,
+        userMessage: userMessage,
+        userProfileContext: userProfileContext,
+      );
 
   Future<List<String>> generateMissionSuggestions({
     required String userGoals,
@@ -159,17 +163,26 @@ class AIService {
         return missions.map((mission) => mission.toString()).toList();
       }
 
-      return ['Complete a daily quest', 'Practice a new skill', 'Help someone today'];
+      return [
+        'Complete a daily quest',
+        'Practice a new skill',
+        'Help someone today'
+      ];
     } catch (e) {
       debugPrint('[AIService] Generate mission suggestions error: $e');
-      return ['Complete a daily quest', 'Practice a new skill', 'Help someone today'];
+      return [
+        'Complete a daily quest',
+        'Practice a new skill',
+        'Help someone today'
+      ];
     }
   }
 
   Map<String, dynamic> _mockVerificationResponse() {
     return {
       'stars': 3,
-      'feedback': 'Good effort. AI verification is temporarily unavailable, so Questime could not fully inspect this proof.',
+      'feedback':
+          'Good effort. AI verification is temporarily unavailable, so ScreenGate could not fully inspect this proof.',
     };
   }
 }

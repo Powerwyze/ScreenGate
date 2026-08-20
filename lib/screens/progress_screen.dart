@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:taskassassin/models/mission.dart';
-import 'package:taskassassin/models/achievement.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/theme.dart';
-import 'package:taskassassin/widgets/stat_card.dart';
+import 'package:screengate/models/mission.dart';
+import 'package:screengate/models/achievement.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/theme.dart';
+import 'package:screengate/widgets/stat_card.dart';
 
 class ProgressScreen extends StatelessWidget {
   const ProgressScreen({super.key});
@@ -28,9 +28,18 @@ class ProgressScreen extends StatelessWidget {
           }
 
           final missions = provider.missions;
-          final completedCount = missions.where((m) => m.status == MissionStatus.completed || m.status == MissionStatus.verified).length;
-          final activeCount = missions.where((m) => m.status == MissionStatus.inProgress || m.status == MissionStatus.pending).length;
-          final failedCount = missions.where((m) => m.status == MissionStatus.failed).length;
+          final completedCount = missions
+              .where((m) =>
+                  m.status == MissionStatus.completed ||
+                  m.status == MissionStatus.verified)
+              .length;
+          final activeCount = missions
+              .where((m) =>
+                  m.status == MissionStatus.inProgress ||
+                  m.status == MissionStatus.pending)
+              .length;
+          final failedCount =
+              missions.where((m) => m.status == MissionStatus.failed).length;
 
           return RefreshIndicator(
             color: CyberpunkColors.neonTeal,
@@ -49,7 +58,8 @@ class ProgressScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Track milestones, streaks, and stars in one place.',
-                  style: context.textStyles.bodyMedium!.withColor(CyberpunkColors.textSecondary),
+                  style: context.textStyles.bodyMedium!
+                      .withColor(CyberpunkColors.textSecondary),
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -96,11 +106,17 @@ class ProgressScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
-                _XpProgressCard(userStars: user.starsInCurrentLevel, nextLevelStars: user.nextLevelStars),
+                _XpProgressCard(
+                    userStars: user.starsInCurrentLevel,
+                    nextLevelStars: user.nextLevelStars),
                 const SizedBox(height: 20),
-                _MissionSummary(active: activeCount, completed: completedCount, failed: failedCount),
+                _MissionSummary(
+                    active: activeCount,
+                    completed: completedCount,
+                    failed: failedCount),
                 const SizedBox(height: 20),
-                Text('Achievements', style: context.textStyles.titleLarge!.bold),
+                Text('Achievements',
+                    style: context.textStyles.titleLarge!.bold),
                 const SizedBox(height: 12),
                 FutureBuilder<List<Achievement>>(
                   future: provider.achievementService.getAllAchievements(),
@@ -113,7 +129,8 @@ class ProgressScreen extends StatelessWidget {
                     if (achievements.isEmpty) {
                       return Text(
                         'No achievements yet. Keep completing missions!',
-                        style: context.textStyles.bodyMedium!.withColor(CyberpunkColors.textSecondary),
+                        style: context.textStyles.bodyMedium!
+                            .withColor(CyberpunkColors.textSecondary),
                       );
                     }
 
@@ -125,14 +142,17 @@ class ProgressScreen extends StatelessWidget {
                           width: 100,
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(AppRadius.sm),
                             border: Border.all(color: CyberpunkColors.border),
                           ),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(achievement.icon, style: const TextStyle(fontSize: 28)),
+                              Text(achievement.icon,
+                                  style: const TextStyle(fontSize: 28)),
                               const SizedBox(height: 6),
                               Text(
                                 achievement.name,
@@ -159,7 +179,8 @@ class _XpProgressCard extends StatelessWidget {
   final int userStars;
   final int nextLevelStars;
 
-  const _XpProgressCard({required this.userStars, required this.nextLevelStars});
+  const _XpProgressCard(
+      {required this.userStars, required this.nextLevelStars});
 
   @override
   Widget build(BuildContext context) {
@@ -181,7 +202,8 @@ class _XpProgressCard extends StatelessWidget {
               Text('XP to next level', style: context.textStyles.labelMedium),
               Text(
                 '$userStars/$nextLevelStars',
-                style: context.textStyles.labelMedium!.copyWith(color: CyberpunkColors.neonTeal),
+                style: context.textStyles.labelMedium!
+                    .copyWith(color: CyberpunkColors.neonTeal),
               ),
             ],
           ),
@@ -198,7 +220,10 @@ class _XpProgressCard extends StatelessWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [CyberpunkColors.neonMagenta, CyberpunkColors.neonTeal],
+                          colors: [
+                            CyberpunkColors.neonMagenta,
+                            CyberpunkColors.neonTeal
+                          ],
                         ),
                       ),
                     ),
@@ -218,7 +243,8 @@ class _MissionStatBox extends StatelessWidget {
   final int value;
   final Color color;
 
-  const _MissionStatBox({required this.label, required this.value, required this.color});
+  const _MissionStatBox(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -234,12 +260,14 @@ class _MissionStatBox extends StatelessWidget {
           children: [
             Text(
               '$value',
-              style: context.textStyles.headlineSmall!.copyWith(color: color, fontWeight: FontWeight.bold),
+              style: context.textStyles.headlineSmall!
+                  .copyWith(color: color, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
             Text(
               label,
-              style: context.textStyles.labelMedium!.withColor(CyberpunkColors.textSecondary),
+              style: context.textStyles.labelMedium!
+                  .withColor(CyberpunkColors.textSecondary),
             ),
           ],
         ),
@@ -253,7 +281,8 @@ class _MissionSummary extends StatelessWidget {
   final int completed;
   final int failed;
 
-  const _MissionSummary({required this.active, required this.completed, required this.failed});
+  const _MissionSummary(
+      {required this.active, required this.completed, required this.failed});
 
   @override
   Widget build(BuildContext context) {
@@ -264,17 +293,28 @@ class _MissionSummary extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('Missions', style: context.textStyles.titleLarge!.bold),
-            Text('Total ${active + completed + failed}', style: context.textStyles.labelMedium!.withColor(CyberpunkColors.textSecondary)),
+            Text('Total ${active + completed + failed}',
+                style: context.textStyles.labelMedium!
+                    .withColor(CyberpunkColors.textSecondary)),
           ],
         ),
         const SizedBox(height: 12),
         Row(
           children: [
-            _MissionStatBox(label: 'Active', value: active, color: CyberpunkColors.neonTeal),
+            _MissionStatBox(
+                label: 'Active',
+                value: active,
+                color: CyberpunkColors.neonTeal),
             const SizedBox(width: 12),
-            _MissionStatBox(label: 'Completed', value: completed, color: CyberpunkColors.neonOrange),
+            _MissionStatBox(
+                label: 'Completed',
+                value: completed,
+                color: CyberpunkColors.neonOrange),
             const SizedBox(width: 12),
-            _MissionStatBox(label: 'Failed', value: failed, color: CyberpunkColors.neonMagenta),
+            _MissionStatBox(
+                label: 'Failed',
+                value: failed,
+                color: CyberpunkColors.neonMagenta),
           ],
         ),
       ],

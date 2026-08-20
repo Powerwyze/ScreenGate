@@ -1,4 +1,4 @@
--- Questime core schema for clean Supabase projects.
+-- ScreenGate core schema for clean Supabase projects.
 
 create extension if not exists pgcrypto;
 

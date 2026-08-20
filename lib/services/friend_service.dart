@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import 'package:taskassassin/models/friend.dart';
-import 'package:taskassassin/models/notification.dart';
-import 'package:taskassassin/services/notification_service.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/models/friend.dart';
+import 'package:screengate/models/notification.dart';
+import 'package:screengate/services/notification_service.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 
 class FriendService {
   late final NotificationService _notificationService;
@@ -24,7 +24,8 @@ class FriendService {
 
       await SupabaseService.insert('friends', friend.toJson());
 
-      final senderData = await SupabaseService.selectSingle('users', filters: {'id': userId});
+      final senderData =
+          await SupabaseService.selectSingle('users', filters: {'id': userId});
       final senderName = senderData?['codename'] ?? 'Someone';
 
       await _notificationService.createNotification(
@@ -44,9 +45,10 @@ class FriendService {
 
   Future<void> acceptFriendRequest(String friendId) async {
     try {
-      final friendData = await SupabaseService.selectSingle('friends', filters: {'id': friendId});
+      final friendData = await SupabaseService.selectSingle('friends',
+          filters: {'id': friendId});
       if (friendData == null) return;
-      
+
       final friend = Friend.fromJson(friendData);
 
       await SupabaseService.update(
@@ -55,7 +57,8 @@ class FriendService {
         filters: {'id': friendId},
       );
 
-      final accepterData = await SupabaseService.selectSingle('users', filters: {'id': friend.friendUserId});
+      final accepterData = await SupabaseService.selectSingle('users',
+          filters: {'id': friend.friendUserId});
       final accepterName = accepterData?['codename'] ?? 'Someone';
 
       await _notificationService.createNotification(
@@ -86,7 +89,8 @@ class FriendService {
 
   Future<Friend?> getFriendById(String friendId) async {
     try {
-      final data = await SupabaseService.selectSingle('friends', filters: {'id': friendId});
+      final data = await SupabaseService.selectSingle('friends',
+          filters: {'id': friendId});
       if (data == null) return null;
       return Friend.fromJson(data);
     } catch (e) {
@@ -114,7 +118,10 @@ class FriendService {
     try {
       final results = await SupabaseService.select(
         'friends',
-        filters: {'friend_user_id': userId, 'status': FriendStatus.pending.name},
+        filters: {
+          'friend_user_id': userId,
+          'status': FriendStatus.pending.name
+        },
       );
       return results.map((json) => Friend.fromJson(json)).toList();
     } catch (e) {
@@ -131,7 +138,8 @@ class FriendService {
       );
       return results.map((json) => Friend.fromJson(json)).toList();
     } catch (e) {
-      debugPrint('[FriendService] Error getting pending requests sent by user: $e');
+      debugPrint(
+          '[FriendService] Error getting pending requests sent by user: $e');
       return [];
     }
   }
@@ -139,7 +147,9 @@ class FriendService {
   Future<List<String>> getAcceptedFriendUserIds(String userId) async {
     try {
       final friends = await getFriendsByUserId(userId);
-      return friends.map((f) => f.userId == userId ? f.friendUserId : f.userId).toList();
+      return friends
+          .map((f) => f.userId == userId ? f.friendUserId : f.userId)
+          .toList();
     } catch (e) {
       debugPrint('[FriendService] Error getting accepted friend user ids: $e');
       return [];

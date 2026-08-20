@@ -1,4 +1,3 @@
-
 enum NotificationType {
   friendRequest,
   friendAccepted,
@@ -31,21 +30,22 @@ class AppNotification {
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'user_id': userId,
-    'type': type.name,
-    'title': title,
-    'message': message,
-    'data': data,
-    'is_read': isRead,
-    'created_at': createdAt.toIso8601String(),
-  };
+        'id': id,
+        'user_id': userId,
+        'type': type.name,
+        'title': title,
+        'message': message,
+        'data': data,
+        'is_read': isRead,
+        'created_at': createdAt.toIso8601String(),
+      };
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic value) {
       if (value is String) return DateTime.parse(value);
       return DateTime.now();
     }
+
     return AppNotification(
       id: json['id'] as String,
       userId: json['user_id'] as String,
@@ -70,14 +70,15 @@ class AppNotification {
     Map<String, dynamic>? data,
     bool? isRead,
     DateTime? createdAt,
-  }) => AppNotification(
-    id: id ?? this.id,
-    userId: userId ?? this.userId,
-    type: type ?? this.type,
-    title: title ?? this.title,
-    message: message ?? this.message,
-    data: data ?? this.data,
-    isRead: isRead ?? this.isRead,
-    createdAt: createdAt ?? this.createdAt,
-  );
+  }) =>
+      AppNotification(
+        id: id ?? this.id,
+        userId: userId ?? this.userId,
+        type: type ?? this.type,
+        title: title ?? this.title,
+        message: message ?? this.message,
+        data: data ?? this.data,
+        isRead: isRead ?? this.isRead,
+        createdAt: createdAt ?? this.createdAt,
+      );
 }

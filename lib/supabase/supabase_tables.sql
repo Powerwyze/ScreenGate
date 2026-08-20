@@ -1,4 +1,4 @@
--- TaskAssassin Database Schema
+-- ScreenGate Database Schema
 -- This file defines all tables for the application
 
 -- Users table (linked to auth.users)

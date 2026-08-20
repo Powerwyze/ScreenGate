@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
-import 'package:taskassassin/models/achievement.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/models/achievement.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 import 'package:uuid/uuid.dart';
 
 class AchievementService {
   AchievementService();
 
-  /// Get all achievements from Supabase. 
+  /// Get all achievements from Supabase.
   /// Returns empty list if none exist (achievements should be seeded in Supabase).
   Future<List<Achievement>> getAllAchievements() async {
     try {
@@ -52,7 +52,8 @@ class AchievementService {
         unlockedAt: DateTime.now(),
       );
 
-      await SupabaseService.insert('user_achievements', userAchievement.toJson());
+      await SupabaseService.insert(
+          'user_achievements', userAchievement.toJson());
       debugPrint('[AchievementService] Achievement unlocked: $achievementId');
     } catch (e) {
       debugPrint('[AchievementService] Error unlocking achievement: $e');

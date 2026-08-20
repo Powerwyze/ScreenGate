@@ -14,7 +14,7 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-    guard let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "QuestimeScreenTime") else {
+    guard let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ScreenGateScreenTime") else {
       return
     }
     let channel = FlutterMethodChannel(

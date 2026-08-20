@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 
 class RememberedChild {
   final String id;
@@ -22,7 +22,7 @@ class FamilyChild {
   final String id;
   final String name;
   final bool hasPassword;
-  final List<QuestimeDevice> devices;
+  final List<ScreenGateDevice> devices;
 
   const FamilyChild({
     required this.id,
@@ -32,7 +32,7 @@ class FamilyChild {
   });
 }
 
-class QuestimeDevice {
+class ScreenGateDevice {
   final String id;
   final String installationId;
   final String platform;
@@ -41,7 +41,7 @@ class QuestimeDevice {
   final int remainingSeconds;
   final DateTime? lastSeenAt;
 
-  const QuestimeDevice({
+  const ScreenGateDevice({
     required this.id,
     required this.installationId,
     required this.platform,
@@ -51,7 +51,8 @@ class QuestimeDevice {
     this.lastSeenAt,
   });
 
-  factory QuestimeDevice.fromJson(Map<String, dynamic> json) => QuestimeDevice(
+  factory ScreenGateDevice.fromJson(Map<String, dynamic> json) =>
+      ScreenGateDevice(
         id: json['id'] as String? ?? '',
         installationId: json['installation_id'] as String? ?? '',
         platform: json['platform'] as String? ?? 'unknown',
@@ -125,7 +126,7 @@ class FamilyService {
       final user = Map<String, dynamic>.from(data['users'] as Map);
       final devices = (deviceRows as List)
           .map((item) =>
-              QuestimeDevice.fromJson(Map<String, dynamic>.from(item)))
+              ScreenGateDevice.fromJson(Map<String, dynamic>.from(item)))
           .where((device) => device.installationId != 'ios-$userId')
           .toList();
       children.add(FamilyChild(

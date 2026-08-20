@@ -1,4 +1,4 @@
--- Row Level Security (RLS) Policies for TaskAssassin
+-- Row Level Security (RLS) Policies for ScreenGate
 
 -- Enable RLS on all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;

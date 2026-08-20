@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 
 class ParentGateService {
   const ParentGateService();

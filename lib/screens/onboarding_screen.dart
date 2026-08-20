@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/models/handler.dart';
-import 'package:taskassassin/models/user.dart';
-import 'package:taskassassin/theme.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/models/handler.dart';
+import 'package:screengate/models/user.dart';
+import 'package:screengate/theme.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -220,7 +220,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         .copyWith(color: AppColors.textSecondary),
                   ),
                   TextSpan(
-                    text: 'QUESTIME',
+                    text: 'SCREENGATE',
                     style: context.textStyles.displaySmall!.bold
                         .copyWith(color: AppColors.checkGreen),
                   ),

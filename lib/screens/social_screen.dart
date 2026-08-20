@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/models/user.dart';
-import 'package:taskassassin/models/friend.dart';
-import 'package:taskassassin/theme.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/models/user.dart';
+import 'package:screengate/models/friend.dart';
+import 'package:screengate/theme.dart';
 
 class SocialScreen extends StatefulWidget {
   const SocialScreen({super.key});
@@ -13,7 +13,8 @@ class SocialScreen extends StatefulWidget {
   State<SocialScreen> createState() => _SocialScreenState();
 }
 
-class _SocialScreenState extends State<SocialScreen> with SingleTickerProviderStateMixin {
+class _SocialScreenState extends State<SocialScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -100,7 +101,7 @@ class _FriendsTabState extends State<_FriendsTab> {
     final friends = await provider.friendService.getFriendsByUserId(userId);
     final friendUserIds = friends.map((f) => f.friendUserId).toList();
     final friendUsers = await provider.userService.getUsersByIds(friendUserIds);
-    
+
     final friendUsersMap = <String, User>{};
     for (final user in friendUsers) {
       friendUsersMap[user.id] = user;
@@ -127,7 +128,8 @@ class _FriendsTabState extends State<_FriendsTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: CyberpunkColors.neonTeal));
+      return Center(
+          child: CircularProgressIndicator(color: CyberpunkColors.neonTeal));
     }
 
     if (_friends.isEmpty) {
@@ -135,7 +137,8 @@ class _FriendsTabState extends State<_FriendsTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.people_outline, size: 48, color: CyberpunkColors.neonTeal),
+            Icon(Icons.people_outline,
+                size: 48, color: CyberpunkColors.neonTeal),
             const SizedBox(height: 16),
             Text('NO FRIENDS YET', style: context.textStyles.titleMedium),
             const SizedBox(height: 8),
@@ -143,7 +146,8 @@ class _FriendsTabState extends State<_FriendsTab> {
               padding: AppSpacing.horizontalXl,
               child: Text(
                 'Start adding friends to compete and collaborate!',
-                style: context.textStyles.bodyMedium!.withColor(CyberpunkColors.textSecondary),
+                style: context.textStyles.bodyMedium!
+                    .withColor(CyberpunkColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -162,7 +166,7 @@ class _FriendsTabState extends State<_FriendsTab> {
         itemBuilder: (context, index) {
           final friend = _friends[index];
           final friendUser = _friendUsers[friend.friendUserId];
-          
+
           if (friendUser == null) return const SizedBox.shrink();
 
           return Container(
@@ -176,7 +180,8 @@ class _FriendsTabState extends State<_FriendsTab> {
             child: Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: CyberpunkColors.neonTeal.withValues(alpha: 0.2),
+                  backgroundColor:
+                      CyberpunkColors.neonTeal.withValues(alpha: 0.2),
                   child: Text(
                     friendUser.codename[0].toUpperCase(),
                     style: context.textStyles.titleMedium!.copyWith(
@@ -207,7 +212,8 @@ class _FriendsTabState extends State<_FriendsTab> {
                 ),
                 IconButton(
                   icon: Icon(Icons.more_vert, color: CyberpunkColors.textMuted),
-                  onPressed: () => _showFriendOptions(context, friend, friendUser),
+                  onPressed: () =>
+                      _showFriendOptions(context, friend, friendUser),
                 ),
               ],
             ),
@@ -217,7 +223,8 @@ class _FriendsTabState extends State<_FriendsTab> {
     );
   }
 
-  void _showFriendOptions(BuildContext context, Friend friend, User friendUser) {
+  void _showFriendOptions(
+      BuildContext context, Friend friend, User friendUser) {
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -242,8 +249,10 @@ class _FriendsTabState extends State<_FriendsTab> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
-              title: Text('Remove Friend', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              leading: Icon(Icons.delete,
+                  color: Theme.of(context).colorScheme.error),
+              title: Text('Remove Friend',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
               onTap: () {
                 Navigator.pop(context);
                 _removeFriend(friend);
@@ -290,7 +299,7 @@ class _RequestsTabState extends State<_RequestsTab> {
     final requests = await provider.friendService.getPendingRequests(userId);
     final requesterIds = requests.map((r) => r.userId).toList();
     final requestUsers = await provider.userService.getUsersByIds(requesterIds);
-    
+
     final requestUsersMap = <String, User>{};
     for (final user in requestUsers) {
       requestUsersMap[user.id] = user;
@@ -338,7 +347,8 @@ class _RequestsTabState extends State<_RequestsTab> {
           children: [
             Text('🔔', style: context.textStyles.displayMedium),
             const SizedBox(height: 16),
-            Text('No Pending Requests', style: context.textStyles.titleLarge!.bold),
+            Text('No Pending Requests',
+                style: context.textStyles.titleLarge!.bold),
             const SizedBox(height: 8),
             Padding(
               padding: AppSpacing.horizontalXl,
@@ -363,7 +373,7 @@ class _RequestsTabState extends State<_RequestsTab> {
         itemBuilder: (context, index) {
           final request = _requests[index];
           final requester = _requestUsers[request.userId];
-          
+
           if (requester == null) return const SizedBox.shrink();
 
           return Card(
@@ -378,17 +388,21 @@ class _RequestsTabState extends State<_RequestsTab> {
                   ),
                 ),
               ),
-              title: Text(requester.codename, style: context.textStyles.titleMedium!.semiBold),
-              subtitle: Text('Level ${requester.level} • ${requester.totalStars} ⭐'),
+              title: Text(requester.codename,
+                  style: context.textStyles.titleMedium!.semiBold),
+              subtitle:
+                  Text('Level ${requester.level} • ${requester.totalStars} ⭐'),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.check, color: Theme.of(context).colorScheme.primary),
+                    icon: Icon(Icons.check,
+                        color: Theme.of(context).colorScheme.primary),
                     onPressed: () => _acceptRequest(request),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close, color: Theme.of(context).colorScheme.error),
+                    icon: Icon(Icons.close,
+                        color: Theme.of(context).colorScheme.error),
                     onPressed: () => _declineRequest(request),
                   ),
                 ],
@@ -425,7 +439,7 @@ class _LeaderboardTabState extends State<_LeaderboardTab> {
     final currentUserId = provider.currentUser?.id;
 
     final leaderboard = await provider.userService.getLeaderboard(limit: 50);
-    
+
     int? rank;
     if (currentUserId != null) {
       rank = leaderboard.indexWhere((u) => u.id == currentUserId);
@@ -442,7 +456,8 @@ class _LeaderboardTabState extends State<_LeaderboardTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: CyberpunkColors.neonTeal));
+      return Center(
+          child: CircularProgressIndicator(color: CyberpunkColors.neonTeal));
     }
 
     return RefreshIndicator(
@@ -457,13 +472,15 @@ class _LeaderboardTabState extends State<_LeaderboardTab> {
               decoration: BoxDecoration(
                 color: CyberpunkColors.neonTeal.withValues(alpha: 0.15),
                 border: Border(
-                  bottom: BorderSide(color: CyberpunkColors.neonTeal.withValues(alpha: 0.3)),
+                  bottom: BorderSide(
+                      color: CyberpunkColors.neonTeal.withValues(alpha: 0.3)),
                 ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.emoji_events, color: CyberpunkColors.neonTeal, size: 20),
+                  Icon(Icons.emoji_events,
+                      color: CyberpunkColors.neonTeal, size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'YOUR RANK: #$_currentUserRank',
@@ -482,18 +499,21 @@ class _LeaderboardTabState extends State<_LeaderboardTab> {
               itemBuilder: (context, index) {
                 final user = _leaderboard[index];
                 final rank = index + 1;
-                final isCurrentUser = user.id == context.read<AppProvider>().currentUser?.id;
+                final isCurrentUser =
+                    user.id == context.read<AppProvider>().currentUser?.id;
 
                 return Container(
                   margin: AppSpacing.verticalSm,
                   padding: AppSpacing.paddingMd,
                   decoration: BoxDecoration(
-                    color: isCurrentUser 
+                    color: isCurrentUser
                         ? CyberpunkColors.neonTeal.withValues(alpha: 0.1)
                         : CyberpunkColors.surfaceVariant,
                     borderRadius: BorderRadius.circular(AppRadius.md),
                     border: Border.all(
-                      color: isCurrentUser ? CyberpunkColors.neonTeal.withValues(alpha: 0.5) : CyberpunkColors.border,
+                      color: isCurrentUser
+                          ? CyberpunkColors.neonTeal.withValues(alpha: 0.5)
+                          : CyberpunkColors.border,
                     ),
                   ),
                   child: Row(
@@ -552,7 +572,7 @@ class _LeaderboardTabState extends State<_LeaderboardTab> {
     Color badgeColor;
     Color textColor;
     IconData? icon;
-    
+
     if (rank == 1) {
       badgeColor = const Color(0xFFFFD700);
       textColor = Colors.black;
@@ -576,13 +596,15 @@ class _LeaderboardTabState extends State<_LeaderboardTab> {
       decoration: BoxDecoration(
         color: badgeColor,
         borderRadius: BorderRadius.circular(8),
-        boxShadow: rank <= 3 ? [
-          BoxShadow(
-            color: badgeColor.withValues(alpha: 0.4),
-            blurRadius: 8,
-            spreadRadius: 0,
-          ),
-        ] : null,
+        boxShadow: rank <= 3
+            ? [
+                BoxShadow(
+                  color: badgeColor.withValues(alpha: 0.4),
+                  blurRadius: 8,
+                  spreadRadius: 0,
+                ),
+              ]
+            : null,
       ),
       child: Center(
         child: icon != null
@@ -649,7 +671,8 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
       final provider = context.read<AppProvider>();
       final currentUserId = provider.currentUser?.id;
       if (currentUserId == null) return;
-      final pending = await provider.friendService.getPendingRequestsSentBy(currentUserId);
+      final pending =
+          await provider.friendService.getPendingRequestsSentBy(currentUserId);
       setState(() {
         _sentRequests.addAll(pending.map((f) => f.friendUserId));
       });
@@ -672,9 +695,10 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
     final currentUserId = provider.currentUser?.id;
 
     final results = await provider.userService.searchUsersByCodename(query);
-    
+
     // Filter out current user
-    final filteredResults = results.where((u) => u.id != currentUserId).toList();
+    final filteredResults =
+        results.where((u) => u.id != currentUserId).toList();
 
     setState(() {
       _searchResults = filteredResults;
@@ -721,14 +745,14 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
                 borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
               suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      _searchController.clear();
-                      _searchUsers('');
-                    },
-                  )
-                : null,
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        _searchUsers('');
+                      },
+                    )
+                  : null,
             ),
             onChanged: (value) {
               if (value.length >= 2) {
@@ -741,7 +765,9 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
         ),
         if (!showingAll && _isSearching)
           const Expanded(child: Center(child: CircularProgressIndicator()))
-        else if (!showingAll && _searchResults.isEmpty && _searchController.text.isNotEmpty)
+        else if (!showingAll &&
+            _searchResults.isEmpty &&
+            _searchController.text.isNotEmpty)
           Expanded(
             child: Center(
               child: Column(
@@ -749,7 +775,8 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
                 children: [
                   Text('🔍', style: context.textStyles.displayMedium),
                   const SizedBox(height: 16),
-                  Text('No Users Found', style: context.textStyles.titleLarge!.bold),
+                  Text('No Users Found',
+                      style: context.textStyles.titleLarge!.bold),
                   const SizedBox(height: 8),
                   Padding(
                     padding: AppSpacing.horizontalXl,
@@ -778,7 +805,8 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
                   margin: AppSpacing.verticalSm,
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primaryContainer,
                       child: Text(
                         user.codename[0].toUpperCase(),
                         style: context.textStyles.titleMedium!.bold.withColor(
@@ -786,17 +814,19 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
                         ),
                       ),
                     ),
-                    title: Text(user.codename, style: context.textStyles.titleMedium!.semiBold),
-                    subtitle: Text('Level ${user.level} • ${user.totalStars} ⭐'),
+                    title: Text(user.codename,
+                        style: context.textStyles.titleMedium!.semiBold),
+                    subtitle:
+                        Text('Level ${user.level} • ${user.totalStars} ⭐'),
                     trailing: requestSent
-                      ? TextButton(
-                          onPressed: null,
-                          child: const Text('Sent'),
-                        )
-                      : FilledButton(
-                          onPressed: () => _sendFriendRequest(user),
-                          child: const Text('Add'),
-                        ),
+                        ? TextButton(
+                            onPressed: null,
+                            child: const Text('Sent'),
+                          )
+                        : FilledButton(
+                            onPressed: () => _sendFriendRequest(user),
+                            child: const Text('Add'),
+                          ),
                   ),
                 );
               },
@@ -818,18 +848,27 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
                           margin: AppSpacing.verticalSm,
                           child: ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                              backgroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .primaryContainer,
                               child: Text(
                                 user.codename[0].toUpperCase(),
-                                style: context.textStyles.titleMedium!.bold.withColor(
-                                  Theme.of(context).colorScheme.onPrimaryContainer,
+                                style: context.textStyles.titleMedium!.bold
+                                    .withColor(
+                                  Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer,
                                 ),
                               ),
                             ),
-                            title: Text(user.codename, style: context.textStyles.titleMedium!.semiBold),
-                            subtitle: Text('Level ${user.level} • ${user.totalStars} ⭐'),
+                            title: Text(user.codename,
+                                style:
+                                    context.textStyles.titleMedium!.semiBold),
+                            subtitle: Text(
+                                'Level ${user.level} • ${user.totalStars} ⭐'),
                             trailing: requestSent
-                                ? TextButton(onPressed: null, child: const Text('Sent'))
+                                ? TextButton(
+                                    onPressed: null, child: const Text('Sent'))
                                 : FilledButton(
                                     onPressed: () => _sendFriendRequest(user),
                                     child: const Text('Add'),

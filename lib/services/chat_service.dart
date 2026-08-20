@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import 'package:taskassassin/models/chat_message.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/models/chat_message.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 
 class ChatService {
   ChatService();

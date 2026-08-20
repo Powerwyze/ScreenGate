@@ -9,7 +9,7 @@
 // 3. Implement all abstract methods with your auth provider logic
 
 import 'package:flutter/material.dart';
-import 'package:taskassassin/models/user.dart';
+import 'package:screengate/models/user.dart';
 
 // Core authentication operations that all auth implementations must provide
 abstract class AuthManager {

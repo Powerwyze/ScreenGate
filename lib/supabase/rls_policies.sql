@@ -1,4 +1,4 @@
--- Idempotent RLS policies for TaskAssassin schema
+-- Idempotent RLS policies for ScreenGate schema
 -- Run this in Supabase SQL Editor. Safe to re-run.
 -- Fixed: All auth.uid() comparisons now properly cast to UUID, removed string concatenation
 

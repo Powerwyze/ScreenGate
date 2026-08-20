@@ -49,7 +49,7 @@ extension TextStyleExtensions on TextStyle {
 }
 
 // =============================================================================
-// TASKASSASSIN COLOR PALETTE - Based on Logo
+// SCREENGATE COLOR PALETTE - Based on Logo
 // =============================================================================
 
 class AppColors {

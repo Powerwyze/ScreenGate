@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/models/chat_message.dart';
-import 'package:taskassassin/theme.dart';
-import 'package:taskassassin/models/mission.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/models/chat_message.dart';
+import 'package:screengate/theme.dart';
+import 'package:screengate/models/mission.dart';
 
 class HandlerChatScreen extends StatefulWidget {
   const HandlerChatScreen({super.key});
@@ -91,10 +91,12 @@ class _HandlerChatScreenState extends State<HandlerChatScreen> {
     _messageController.clear();
     _scrollToBottom();
 
-    final conversationHistory = _messages.map((m) => {
-      'role': m.role.name,
-      'content': m.content,
-    }).toList();
+    final conversationHistory = _messages
+        .map((m) => {
+              'role': m.role.name,
+              'content': m.content,
+            })
+        .toList();
 
     // Build user profile context
     final userProfileContext = '''
@@ -215,9 +217,12 @@ Longest Streak: ${user.longestStreak} days
                     decoration: BoxDecoration(
                       color: CyberpunkColors.neonGreen.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: CyberpunkColors.neonGreen.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color:
+                              CyberpunkColors.neonGreen.withValues(alpha: 0.3)),
                     ),
-                    child: Text(handler.avatar, style: const TextStyle(fontSize: 20)),
+                    child: Text(handler.avatar,
+                        style: const TextStyle(fontSize: 20)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -301,7 +306,8 @@ Longest Streak: ${user.longestStreak} days
                       style: context.textStyles.bodyMedium,
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
-                        hintStyle: context.textStyles.bodyMedium!.copyWith(color: CyberpunkColors.textMuted),
+                        hintStyle: context.textStyles.bodyMedium!
+                            .copyWith(color: CyberpunkColors.textMuted),
                         filled: true,
                         fillColor: CyberpunkColors.surfaceVariant,
                         border: OutlineInputBorder(
@@ -314,7 +320,8 @@ Longest Streak: ${user.longestStreak} days
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppRadius.lg),
-                          borderSide: BorderSide(color: CyberpunkColors.neonTeal, width: 2),
+                          borderSide: BorderSide(
+                              color: CyberpunkColors.neonTeal, width: 2),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -333,7 +340,8 @@ Longest Streak: ${user.longestStreak} days
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: CyberpunkColors.neonTeal.withValues(alpha: 0.4),
+                          color:
+                              CyberpunkColors.neonTeal.withValues(alpha: 0.4),
                           blurRadius: 8,
                           spreadRadius: 0,
                         ),
@@ -357,8 +365,9 @@ Longest Streak: ${user.longestStreak} days
     final isUser = message.role == ChatRole.user;
 
     // Prepare content: remove any JSON blocks so we don't show raw payload
-    final List<Map<String, String>> missions =
-        isUser ? const <Map<String, String>>[] : _parseSuggestedMissions(message.content);
+    final List<Map<String, String>> missions = isUser
+        ? const <Map<String, String>>[]
+        : _parseSuggestedMissions(message.content);
 
     String cleanedText;
     if (isUser) {
@@ -374,7 +383,8 @@ Longest Streak: ${user.longestStreak} days
     return Padding(
       padding: AppSpacing.verticalSm,
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
@@ -385,7 +395,9 @@ Longest Streak: ${user.longestStreak} days
                   decoration: BoxDecoration(
                     color: CyberpunkColors.neonGreen.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: CyberpunkColors.neonGreen.withValues(alpha: 0.3)),
+                    border: Border.all(
+                        color:
+                            CyberpunkColors.neonGreen.withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     provider.currentHandler?.avatar ?? '🤖',
@@ -400,12 +412,12 @@ Longest Streak: ${user.longestStreak} days
             child: Container(
               padding: AppSpacing.paddingMd,
               decoration: BoxDecoration(
-                color: isUser 
+                color: isUser
                     ? CyberpunkColors.neonTeal.withValues(alpha: 0.15)
                     : CyberpunkColors.surfaceVariant,
                 borderRadius: BorderRadius.circular(AppRadius.md),
                 border: Border.all(
-                  color: isUser 
+                  color: isUser
                       ? CyberpunkColors.neonTeal.withValues(alpha: 0.3)
                       : CyberpunkColors.border,
                 ),
@@ -413,14 +425,16 @@ Longest Streak: ${user.longestStreak} days
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   if (cleanedText.isNotEmpty)
-                     Text(
-                       cleanedText,
-                       style: context.textStyles.bodyMedium!.copyWith(
-                         color: CyberpunkColors.textPrimary,
-                       ),
-                     ),
-                   if (!isUser) ..._buildMissionsFromText(context, message.content, preParsed: missions),
+                  if (cleanedText.isNotEmpty)
+                    Text(
+                      cleanedText,
+                      style: context.textStyles.bodyMedium!.copyWith(
+                        color: CyberpunkColors.textPrimary,
+                      ),
+                    ),
+                  if (!isUser)
+                    ..._buildMissionsFromText(context, message.content,
+                        preParsed: missions),
                 ],
               ),
             ),
@@ -430,17 +444,20 @@ Longest Streak: ${user.longestStreak} days
     );
   }
 
-  List<Widget> _buildMissionsFromText(BuildContext context, String text, {List<Map<String, String>>? preParsed}) {
+  List<Widget> _buildMissionsFromText(BuildContext context, String text,
+      {List<Map<String, String>>? preParsed}) {
     final missions = preParsed ?? _parseSuggestedMissions(text);
     if (missions.isEmpty) return const [];
 
     return [
       const SizedBox(height: 12),
-      Text('Suggested Missions', style: context.textStyles.labelSmall!.semiBold),
+      Text('Suggested Missions',
+          style: context.textStyles.labelSmall!.semiBold),
       const SizedBox(height: 8),
       ...missions.map((m) => Padding(
             padding: AppSpacing.verticalXs,
-            child: _SuggestedMissionTile(mission: m, onAccept: () => _acceptSuggestedMission(m)),
+            child: _SuggestedMissionTile(
+                mission: m, onAccept: () => _acceptSuggestedMission(m)),
           )),
     ];
   }
@@ -573,10 +590,10 @@ Longest Streak: ${user.longestStreak} days
     int depth = 0;
     bool inString = false;
     bool escaped = false;
-    
+
     for (int i = 0; i < text.length; i++) {
       final ch = text[i];
-      
+
       if (inString) {
         if (escaped) {
           escaped = false;
@@ -587,12 +604,12 @@ Longest Streak: ${user.longestStreak} days
         }
         continue;
       }
-      
+
       if (ch == '"') {
         inString = true;
         continue;
       }
-      
+
       if (ch == '{') {
         depth++;
       } else if (ch == '}') {
@@ -602,13 +619,13 @@ Longest Streak: ${user.longestStreak} days
         }
       }
     }
-    
+
     return -1; // No matching closing brace found
   }
 
   List<Map<String, String>> _parseSuggestedMissions(String text) {
     final List<Map<String, String>> missions = [];
-    
+
     try {
       // First try to extract from fenced code blocks
       final fence = RegExp(r"```(?:json)?\s*([\s\S]*?)```", multiLine: true);
@@ -623,7 +640,7 @@ Longest Streak: ${user.longestStreak} days
           } catch (_) {}
         }
       }
-      
+
       // Then try to find inline JSON objects
       final blocks = _extractAllJsonObjects(text);
       for (final b in blocks) {
@@ -632,11 +649,12 @@ Longest Streak: ${user.longestStreak} days
     } catch (e) {
       debugPrint('parseSuggestedMissions failed: $e');
     }
-    
+
     return missions;
   }
-  
-  void _extractMissionsFromJson(Map<String, dynamic> json, List<Map<String, String>> missions) {
+
+  void _extractMissionsFromJson(
+      Map<String, dynamic> json, List<Map<String, String>> missions) {
     final list = (json['missions'] ?? json['suggestions'] ?? json['tasks']);
     if (list is List) {
       for (final item in list) {
@@ -644,7 +662,10 @@ Longest Streak: ${user.longestStreak} days
           missions.add({
             'title': (item['title'] ?? '').toString(),
             'description': (item['description'] ?? '').toString(),
-            'done': (item['done'] ?? item['completedState'] ?? 'Provide a quick proof of completion.').toString(),
+            'done': (item['done'] ??
+                    item['completedState'] ??
+                    'Provide a quick proof of completion.')
+                .toString(),
           });
         } else if (item is String) {
           missions.add({
@@ -657,7 +678,6 @@ Longest Streak: ${user.longestStreak} days
     }
   }
 
-
   Future<void> _acceptSuggestedMission(Map<String, String> m) async {
     final provider = context.read<AppProvider>();
     final user = provider.currentUser;
@@ -665,7 +685,9 @@ Longest Streak: ${user.longestStreak} days
 
     final title = m['title'] ?? 'AI Mission';
     final description = m['description'] ?? 'Suggested by your handler';
-    final done = m['done'] ?? m['completedState'] ?? 'You can clearly show it is finished.';
+    final done = m['done'] ??
+        m['completedState'] ??
+        'You can clearly show it is finished.';
 
     try {
       final mission = await provider.missionService.createMission(
@@ -703,7 +725,8 @@ Longest Streak: ${user.longestStreak} days
                 decoration: BoxDecoration(
                   color: CyberpunkColors.neonGreen.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: CyberpunkColors.neonGreen.withValues(alpha: 0.3)),
+                  border: Border.all(
+                      color: CyberpunkColors.neonGreen.withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   provider.currentHandler?.avatar ?? '🤖',
@@ -779,7 +802,8 @@ class _SuggestedMissionTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: CyberpunkColors.cardBg,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: CyberpunkColors.neonTeal.withValues(alpha: 0.3)),
+        border:
+            Border.all(color: CyberpunkColors.neonTeal.withValues(alpha: 0.3)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -791,7 +815,8 @@ class _SuggestedMissionTile extends StatelessWidget {
                 color: CyberpunkColors.neonTeal.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.flag_outlined, color: CyberpunkColors.neonTeal, size: 20),
+              child: Icon(Icons.flag_outlined,
+                  color: CyberpunkColors.neonTeal, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -810,7 +835,8 @@ class _SuggestedMissionTile extends StatelessWidget {
                   if (desc.isNotEmpty)
                     Text(
                       desc,
-                      style: context.textStyles.bodySmall!.copyWith(color: CyberpunkColors.textSecondary),
+                      style: context.textStyles.bodySmall!
+                          .copyWith(color: CyberpunkColors.textSecondary),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -821,7 +847,8 @@ class _SuggestedMissionTile extends StatelessWidget {
             GestureDetector(
               onTap: onAccept,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: CyberpunkColors.neonTeal,
                   borderRadius: BorderRadius.circular(6),

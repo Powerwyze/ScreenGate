@@ -34,7 +34,7 @@ class BlockedActivity : Activity() {
             setPadding(0, padding, 0, padding)
         }, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         layout.addView(Button(this).apply {
-            text = "GO TO QUESTIME"
+            text = "GO TO SCREENGATE"
             setOnClickListener {
                 packageManager.getLaunchIntentForPackage(packageName)?.let(::startActivity)
                 finish()

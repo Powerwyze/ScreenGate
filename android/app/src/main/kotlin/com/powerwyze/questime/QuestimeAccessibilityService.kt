@@ -14,11 +14,11 @@ class QuestimeAccessibilityService : AccessibilityService() {
     private val ticker = object : Runnable {
         override fun run() {
             val current = foregroundPackage
-            if (current != null && QuestimeControlStore.blockedPackages(this@QuestimeAccessibilityService).contains(current)) {
-                if (QuestimeControlStore.remainingSeconds(this@QuestimeAccessibilityService) <= 0) {
+            if (current != null && ScreenGateControlStore.blockedPackages(this@QuestimeAccessibilityService).contains(current)) {
+                if (ScreenGateControlStore.remainingSeconds(this@QuestimeAccessibilityService) <= 0) {
                     showBlocker()
                 } else {
-                    QuestimeControlStore.spendSecond(this@QuestimeAccessibilityService)
+                    ScreenGateControlStore.spendSecond(this@QuestimeAccessibilityService)
                 }
             }
             handler.postDelayed(this, 1000)
@@ -34,8 +34,8 @@ class QuestimeAccessibilityService : AccessibilityService() {
         if (event == null) return
         val observedPackage = event.packageName?.toString() ?: return
         foregroundPackage = observedPackage
-        if (QuestimeControlStore.blockedPackages(this).contains(observedPackage) &&
-            QuestimeControlStore.remainingSeconds(this) <= 0
+        if (ScreenGateControlStore.blockedPackages(this).contains(observedPackage) &&
+            ScreenGateControlStore.remainingSeconds(this) <= 0
         ) {
             blockerOpen = false
             showBlocker()

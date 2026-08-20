@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:taskassassin/models/notification.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/theme.dart';
+import 'package:screengate/models/notification.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/theme.dart';
 import 'package:intl/intl.dart';
 
 class NotificationsScreen extends StatelessWidget {
@@ -23,7 +23,8 @@ class NotificationsScreen extends StatelessWidget {
               await provider.notificationService.markAllAsRead();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('All notifications marked as read')),
+                  const SnackBar(
+                      content: Text('All notifications marked as read')),
                 );
               }
             },
@@ -35,7 +36,8 @@ class NotificationsScreen extends StatelessWidget {
                   context: context,
                   builder: (context) => AlertDialog(
                     title: const Text('Delete All Notifications'),
-                    content: const Text('Are you sure you want to delete all notifications?'),
+                    content: const Text(
+                        'Are you sure you want to delete all notifications?'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context, false),
@@ -52,7 +54,8 @@ class NotificationsScreen extends StatelessWidget {
                   await provider.notificationService.deleteAllNotifications();
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('All notifications deleted')),
+                      const SnackBar(
+                          content: Text('All notifications deleted')),
                     );
                   }
                 }
@@ -114,12 +117,14 @@ class NotificationsScreen extends StatelessWidget {
                 notification: notification,
                 onTap: () async {
                   if (!notification.isRead) {
-                    await provider.notificationService.markAsRead(notification.id);
+                    await provider.notificationService
+                        .markAsRead(notification.id);
                   }
                   await _handleNotificationTap(context, provider, notification);
                 },
                 onDismiss: () async {
-                  await provider.notificationService.deleteNotification(notification.id);
+                  await provider.notificationService
+                      .deleteNotification(notification.id);
                 },
               );
             },
@@ -148,7 +153,9 @@ Future<void> _handleNotificationTap(
       }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mission not found')), // mission was deleted or missing
+          const SnackBar(
+              content:
+                  Text('Mission not found')), // mission was deleted or missing
         );
       }
       break;
@@ -157,7 +164,8 @@ Future<void> _handleNotificationTap(
       if (context.mounted) {
         context.go('/home');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Open Social > Requests to manage friends')),
+          const SnackBar(
+              content: Text('Open Social > Requests to manage friends')),
         );
       }
       break;
@@ -210,12 +218,18 @@ class NotificationCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: notification.isRead
                 ? Theme.of(context).colorScheme.surfaceContainerHighest
-                : Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                : Theme.of(context)
+                    .colorScheme
+                    .primaryContainer
+                    .withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(AppRadius.md),
             border: notification.isRead
                 ? null
                 : Border.all(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.3),
                     width: 1,
                   ),
           ),
@@ -225,7 +239,8 @@ class NotificationCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: _getNotificationColor(context, notification.type).withValues(alpha: 0.2),
+                  color: _getNotificationColor(context, notification.type)
+                      .withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

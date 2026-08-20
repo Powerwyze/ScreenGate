@@ -1,6 +1,6 @@
 # Google Gemini AI Setup
 
-TaskAssassin uses Google Gemini AI for:
+ScreenGate uses Google Gemini AI for:
 - Mission verification and star rating
 - Personalized Handler feedback
 - AI-powered chat conversations
@@ -13,7 +13,7 @@ TaskAssassin uses Google Gemini AI for:
 3. Click "Get API Key" or "Create API Key"
 4. Copy your API key
 
-## Adding the API Key to TaskAssassin
+## Adding the API Key to ScreenGate
 
 1. Open `lib/services/ai_service.dart`
 2. Find line 7: `static const String _geminiApiKey = 'YOUR_GEMINI_API_KEY_HERE';`
@@ -40,7 +40,7 @@ Google Gemini offers a generous free tier:
 - 1,500 requests per day
 - Free for personal use
 
-Perfect for TaskAssassin!
+Perfect for ScreenGate!
 
 ## Troubleshooting
 

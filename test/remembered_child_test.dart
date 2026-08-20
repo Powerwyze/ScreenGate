@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:taskassassin/services/family_service.dart';
+import 'package:screengate/services/family_service.dart';
 
 void main() {
   test('RememberedChild round-trips local account data', () {
@@ -14,8 +14,9 @@ void main() {
     expect(restored.name, child.name);
   });
 
-  test('QuestimeDevice keeps the installation identity used for deduping', () {
-    final device = QuestimeDevice.fromJson({
+  test('ScreenGateDevice keeps the installation identity used for deduping',
+      () {
+    final device = ScreenGateDevice.fromJson({
       'id': 'device-id',
       'installation_id': 'ios-7d173659-6a18-41f7-84ac-e73bf9822451',
       'platform': 'ios',

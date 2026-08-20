@@ -1,12 +1,12 @@
-# Questime Mobile Release Path
+# ScreenGate Mobile Release Path
 
-Questime is a Flutter app. The same Dart codebase should ship native Android and iOS builds.
+ScreenGate is a Flutter app. The same Dart codebase should ship native Android and iOS builds.
 
 ## Current Mobile Identifiers
 
 - Android application ID: `com.powerwyze.questime`
 - iOS target bundle ID to set in Xcode: `com.powerwyze.questime`
-- App display name: `Questime`
+- App display name: `ScreenGate`
 
 ## Build Configuration
 

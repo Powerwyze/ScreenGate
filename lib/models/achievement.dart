@@ -18,24 +18,24 @@ class Achievement {
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'description': description,
-    'icon': icon,
-    'criteria': criteria,
-    'stars_required': starsRequired,
-    'category': category,
-  };
+        'id': id,
+        'name': name,
+        'description': description,
+        'icon': icon,
+        'criteria': criteria,
+        'stars_required': starsRequired,
+        'category': category,
+      };
 
   factory Achievement.fromJson(Map<String, dynamic> json) => Achievement(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    description: json['description'] as String,
-    icon: json['icon'] as String,
-    criteria: json['criteria'] as String,
-    starsRequired: json['stars_required'] as int,
-    category: json['category'] as String,
-  );
+        id: json['id'] as String,
+        name: json['name'] as String,
+        description: json['description'] as String,
+        icon: json['icon'] as String,
+        criteria: json['criteria'] as String,
+        starsRequired: json['stars_required'] as int,
+        category: json['category'] as String,
+      );
 
   Achievement copyWith({
     String? id,
@@ -45,15 +45,16 @@ class Achievement {
     String? criteria,
     int? starsRequired,
     String? category,
-  }) => Achievement(
-    id: id ?? this.id,
-    name: name ?? this.name,
-    description: description ?? this.description,
-    icon: icon ?? this.icon,
-    criteria: criteria ?? this.criteria,
-    starsRequired: starsRequired ?? this.starsRequired,
-    category: category ?? this.category,
-  );
+  }) =>
+      Achievement(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        description: description ?? this.description,
+        icon: icon ?? this.icon,
+        criteria: criteria ?? this.criteria,
+        starsRequired: starsRequired ?? this.starsRequired,
+        category: category ?? this.category,
+      );
 }
 
 class UserAchievement {
@@ -70,12 +71,13 @@ class UserAchievement {
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'user_id': userId,
-    'achievement_id': achievementId,
-    'unlocked_at': unlockedAt.toIso8601String(),
-    'earned_at': unlockedAt.toIso8601String(), // Alias for unlocked_at for firestore index
-  };
+        'id': id,
+        'user_id': userId,
+        'achievement_id': achievementId,
+        'unlocked_at': unlockedAt.toIso8601String(),
+        'earned_at': unlockedAt
+            .toIso8601String(), // Alias for unlocked_at for firestore index
+      };
 
   factory UserAchievement.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic value) {
@@ -83,7 +85,7 @@ class UserAchievement {
       if (value is String) return DateTime.parse(value);
       return DateTime.now();
     }
-    
+
     return UserAchievement(
       id: json['id'] as String,
       userId: json['user_id'] as String,
@@ -97,10 +99,11 @@ class UserAchievement {
     String? userId,
     String? achievementId,
     DateTime? unlockedAt,
-  }) => UserAchievement(
-    id: id ?? this.id,
-    userId: userId ?? this.userId,
-    achievementId: achievementId ?? this.achievementId,
-    unlockedAt: unlockedAt ?? this.unlockedAt,
-  );
+  }) =>
+      UserAchievement(
+        id: id ?? this.id,
+        userId: userId ?? this.userId,
+        achievementId: achievementId ?? this.achievementId,
+        unlockedAt: unlockedAt ?? this.unlockedAt,
+      );
 }

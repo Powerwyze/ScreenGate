@@ -65,7 +65,7 @@ function normalizeHandler(raw: any): HandlerPayload {
 
   return {
     name: requireString(raw.name, "handler.name", 80),
-    description: optionalString(raw.description, "handler.description", 1000) ?? "Questime mission coach",
+    description: optionalString(raw.description, "handler.description", 1000) ?? "ScreenGate mission coach",
     personalityStyle: optionalString(raw.personalityStyle ?? raw.personality_style, "handler.personalityStyle", 1000) ?? "direct and helpful",
   }
 }
@@ -274,7 +274,7 @@ serve(async (req) => {
         throw new HttpError(400, "An after photo is required for verification")
       }
 
-      let prompt = `You are ${handler.name}, a Questime verification coach with this personality: ${handler.personalityStyle}\n\n`
+      let prompt = `You are ${handler.name}, a ScreenGate verification coach with this personality: ${handler.personalityStyle}\n\n`
       prompt += `Quest: "${missionTitle}"\n`
       prompt += `Description: ${missionDescription}\n`
       prompt += `Expected completed state: ${completedState}\n\n`
@@ -303,7 +303,7 @@ serve(async (req) => {
       const userProfileContext = optionalString(payload.userProfileContext, "userProfileContext", 2000)
 
       let systemPrompt = `You are ${handler.name}, ${handler.description}\nPersonality: ${handler.personalityStyle}\n\n`
-      systemPrompt += "You are a Questime coach who helps users turn goals into concrete quests. Keep responses concise and actionable."
+      systemPrompt += "You are a ScreenGate coach who helps users turn goals into concrete quests. Keep responses concise and actionable."
       if (userProfileContext) {
         systemPrompt += `\nUser context: ${userProfileContext}`
       }
@@ -332,7 +332,7 @@ serve(async (req) => {
       const countValue = Number(payload.count ?? 3)
       const count = Math.min(Math.max(Number.isFinite(countValue) ? countValue : 3, 1), 5)
 
-      const prompt = `You are ${handler.name}, ${handler.description}\nUser goals: ${userGoals}\n\nSuggest ${count} realistic Questime quests. Return only a JSON array of quest titles.`
+      const prompt = `You are ${handler.name}, ${handler.description}\nUser goals: ${userGoals}\n\nSuggest ${count} realistic ScreenGate quests. Return only a JSON array of quest titles.`
       const result = await generateWithFallback(apiKey, [{ role: "user", parts: [{ text: prompt }] }])
       const text = extractText(result)
       const jsonMatch = text.match(/\[[\s\S]*\]/)

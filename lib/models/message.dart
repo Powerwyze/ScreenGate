@@ -16,22 +16,22 @@ class Message {
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'sender_id': senderId,
-    'receiver_id': receiverId,
-    'content': content,
-    'is_read': isRead,
-    'created_at': createdAt.toIso8601String(),
-  };
+        'id': id,
+        'sender_id': senderId,
+        'receiver_id': receiverId,
+        'content': content,
+        'is_read': isRead,
+        'created_at': createdAt.toIso8601String(),
+      };
 
   factory Message.fromJson(Map<String, dynamic> json) => Message(
-    id: json['id'] as String,
-    senderId: json['sender_id'] as String,
-    receiverId: json['receiver_id'] as String,
-    content: json['content'] as String,
-    isRead: json['is_read'] as bool,
-    createdAt: DateTime.parse(json['created_at'] as String),
-  );
+        id: json['id'] as String,
+        senderId: json['sender_id'] as String,
+        receiverId: json['receiver_id'] as String,
+        content: json['content'] as String,
+        isRead: json['is_read'] as bool,
+        createdAt: DateTime.parse(json['created_at'] as String),
+      );
 
   Message copyWith({
     String? id,
@@ -40,12 +40,13 @@ class Message {
     String? content,
     bool? isRead,
     DateTime? createdAt,
-  }) => Message(
-    id: id ?? this.id,
-    senderId: senderId ?? this.senderId,
-    receiverId: receiverId ?? this.receiverId,
-    content: content ?? this.content,
-    isRead: isRead ?? this.isRead,
-    createdAt: createdAt ?? this.createdAt,
-  );
+  }) =>
+      Message(
+        id: id ?? this.id,
+        senderId: senderId ?? this.senderId,
+        receiverId: receiverId ?? this.receiverId,
+        content: content ?? this.content,
+        isRead: isRead ?? this.isRead,
+        createdAt: createdAt ?? this.createdAt,
+      );
 }

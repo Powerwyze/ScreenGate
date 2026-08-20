@@ -1,4 +1,4 @@
--- Pending Migrations for TaskAssassin
+-- Pending Migrations for ScreenGate
 -- This file contains migrations that need to be re-applied
 
 -- Drop existing policies if they exist (to avoid conflicts)

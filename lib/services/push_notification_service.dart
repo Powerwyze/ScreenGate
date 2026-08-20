@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 
 /// Background message handler (must be top-level)
 @pragma('vm:entry-point')
@@ -16,13 +16,15 @@ const bool _pushNotificationsEnabled = bool.fromEnvironment(
 );
 
 class PushNotificationService {
-  static final PushNotificationService _instance = PushNotificationService._internal();
+  static final PushNotificationService _instance =
+      PushNotificationService._internal();
   factory PushNotificationService() => _instance;
   PushNotificationService._internal();
 
   FirebaseMessaging? _fcm;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
-  
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+
   bool _initialized = false;
   String? _fcmToken;
 
@@ -33,7 +35,8 @@ class PushNotificationService {
     if (_initialized) return;
 
     if (!_pushNotificationsEnabled) {
-      debugPrint('[FCM] Skipping initialization. Configure Firebase and build with --dart-define=ENABLE_PUSH=true to enable push notifications.');
+      debugPrint(
+          '[FCM] Skipping initialization. Configure Firebase and build with --dart-define=ENABLE_PUSH=true to enable push notifications.');
       _initialized = true;
       return;
     }
@@ -48,7 +51,7 @@ class PushNotificationService {
     try {
       // Get FCM instance (mobile only)
       _fcm = FirebaseMessaging.instance;
-      
+
       // Request permission (iOS)
       final settings = await _fcm!.requestPermission(
         alert: true,
@@ -69,7 +72,8 @@ class PushNotificationService {
       await _initializeLocalNotifications();
 
       // Set background message handler
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      FirebaseMessaging.onBackgroundMessage(
+          _firebaseMessagingBackgroundHandler);
 
       // Get FCM token
       _fcmToken = await _fcm!.getToken();
@@ -110,7 +114,8 @@ class PushNotificationService {
 
   /// Initialize local notifications plugin
   Future<void> _initializeLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -148,8 +153,8 @@ class PushNotificationService {
 
     const androidDetails = AndroidNotificationDetails(
       'questime_default',
-      'Questime Notifications',
-      channelDescription: 'General notifications for Questime',
+      'ScreenGate Notifications',
+      channelDescription: 'General notifications for ScreenGate',
       importance: Importance.high,
       priority: Priority.high,
       showWhen: true,
@@ -179,7 +184,7 @@ class PushNotificationService {
   void _handleNotificationTap(RemoteMessage message) {
     debugPrint('[FCM] Notification tapped: ${message.messageId}');
     debugPrint('[FCM] Data: ${message.data}');
-    
+
     // TODO: Navigate based on notification type/data
     // Example: if (message.data['type'] == 'mission') { navigate to mission }
   }
@@ -203,10 +208,10 @@ class PushNotificationService {
       final userId = SupabaseConfig.auth.currentUser?.id;
       if (userId == null) return;
 
-      await SupabaseConfig.client
-          .from('users')
-          .update({'fcm_token': token, 'updated_at': DateTime.now().toIso8601String()})
-          .eq('id', userId);
+      await SupabaseConfig.client.from('users').update({
+        'fcm_token': token,
+        'updated_at': DateTime.now().toIso8601String()
+      }).eq('id', userId);
 
       debugPrint('[FCM] Token saved to user profile');
     } catch (e) {
@@ -220,13 +225,13 @@ class PushNotificationService {
       if (_fcm != null) {
         await _fcm!.deleteToken();
       }
-      
+
       final userId = SupabaseConfig.auth.currentUser?.id;
       if (userId != null) {
-        await SupabaseConfig.client
-            .from('users')
-            .update({'fcm_token': null, 'updated_at': DateTime.now().toIso8601String()})
-            .eq('id', userId);
+        await SupabaseConfig.client.from('users').update({
+          'fcm_token': null,
+          'updated_at': DateTime.now().toIso8601String()
+        }).eq('id', userId);
       }
 
       _fcmToken = null;

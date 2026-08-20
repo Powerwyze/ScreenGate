@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:taskassassin/models/user.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/theme.dart';
+import 'package:screengate/models/user.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/theme.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
@@ -64,7 +64,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         ],
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: CyberpunkColors.neonTeal))
+          ? Center(
+              child: CircularProgressIndicator(color: CyberpunkColors.neonTeal))
           : RefreshIndicator(
               color: CyberpunkColors.neonTeal,
               backgroundColor: CyberpunkColors.surface,
@@ -78,13 +79,16 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                       decoration: BoxDecoration(
                         color: CyberpunkColors.neonTeal.withValues(alpha: 0.12),
                         border: Border(
-                          bottom: BorderSide(color: CyberpunkColors.neonTeal.withValues(alpha: 0.4)),
+                          bottom: BorderSide(
+                              color: CyberpunkColors.neonTeal
+                                  .withValues(alpha: 0.4)),
                         ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.emoji_events, color: CyberpunkColors.neonTeal, size: 20),
+                          const Icon(Icons.emoji_events,
+                              color: CyberpunkColors.neonTeal, size: 20),
                           const SizedBox(width: 8),
                           Text(
                             'Your Rank: #$_currentUserRank',
@@ -103,19 +107,22 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                       itemBuilder: (context, index) {
                         final user = _leaderboard[index];
                         final rank = index + 1;
-                        final isCurrentUser = user.id == context.read<AppProvider>().currentUser?.id;
+                        final isCurrentUser = user.id ==
+                            context.read<AppProvider>().currentUser?.id;
 
                         return Container(
                           margin: AppSpacing.verticalSm,
                           padding: AppSpacing.paddingMd,
                           decoration: BoxDecoration(
                             color: isCurrentUser
-                                ? CyberpunkColors.neonTeal.withValues(alpha: 0.12)
+                                ? CyberpunkColors.neonTeal
+                                    .withValues(alpha: 0.12)
                                 : CyberpunkColors.surfaceVariant,
                             borderRadius: BorderRadius.circular(AppRadius.md),
                             border: Border.all(
                               color: isCurrentUser
-                                  ? CyberpunkColors.neonTeal.withValues(alpha: 0.4)
+                                  ? CyberpunkColors.neonTeal
+                                      .withValues(alpha: 0.4)
                                   : CyberpunkColors.border,
                             ),
                           ),
@@ -129,13 +136,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                                   children: [
                                     Text(
                                       user.codename.toUpperCase(),
-                                      style: context.textStyles.titleSmall!.copyWith(
+                                      style: context.textStyles.titleSmall!
+                                          .copyWith(
                                         color: CyberpunkColors.textPrimary,
                                       ),
                                     ),
                                     Text(
                                       'LVL ${user.level} • ${user.currentStreak} DAY STREAK',
-                                      style: context.textStyles.labelSmall!.copyWith(
+                                      style: context.textStyles.labelSmall!
+                                          .copyWith(
                                         color: CyberpunkColors.textMuted,
                                       ),
                                     ),
@@ -147,14 +156,16 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                                 children: [
                                   Text(
                                     '${user.totalStars}',
-                                    style: context.textStyles.titleLarge!.copyWith(
+                                    style:
+                                        context.textStyles.titleLarge!.copyWith(
                                       color: CyberpunkColors.neonOrange,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                   Text(
                                     'STARS',
-                                    style: context.textStyles.labelSmall!.copyWith(
+                                    style:
+                                        context.textStyles.labelSmall!.copyWith(
                                       color: CyberpunkColors.neonOrange,
                                     ),
                                   ),

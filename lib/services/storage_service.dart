@@ -66,7 +66,8 @@ class StorageService {
       if (str == null || str.isEmpty) return [];
       final decoded = jsonDecode(str);
       if (decoded is! List) return [];
-      return List<Map<String, dynamic>>.from(decoded.map((e) => e as Map<String, dynamic>));
+      return List<Map<String, dynamic>>.from(
+          decoded.map((e) => e as Map<String, dynamic>));
     } catch (e) {
       debugPrint('Error getting JSON list from storage ($key): $e');
       return [];

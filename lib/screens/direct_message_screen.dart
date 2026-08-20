@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:taskassassin/models/message.dart' as dm;
-import 'package:taskassassin/models/user.dart' as model_user;
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/theme.dart';
+import 'package:screengate/models/message.dart' as dm;
+import 'package:screengate/models/user.dart' as model_user;
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/theme.dart';
 
 class DirectMessageScreen extends StatefulWidget {
   final model_user.User peer;
@@ -37,10 +37,12 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
         if (me != null) {
           // Ensure the StreamBuilder rebuilds when we attach the stream
           setState(() {
-            _conversationStream = provider.messageService.getConversationStream(me.id, widget.peer.id);
+            _conversationStream = provider.messageService
+                .getConversationStream(me.id, widget.peer.id);
             _initializedStream = true;
           });
-          debugPrint('Conversation stream initialized for ${me.id} <-> ${widget.peer.id}');
+          debugPrint(
+              'Conversation stream initialized for ${me.id} <-> ${widget.peer.id}');
         }
       } catch (e) {
         debugPrint('Error initializing conversation stream: $e');
@@ -106,8 +108,11 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.peer.codename, style: context.textStyles.titleMedium!.semiBold),
-                Text('Direct Message', style: context.textStyles.labelSmall!.withColor(Theme.of(context).colorScheme.onSurfaceVariant)),
+                Text(widget.peer.codename,
+                    style: context.textStyles.titleMedium!.semiBold),
+                Text('Direct Message',
+                    style: context.textStyles.labelSmall!.withColor(
+                        Theme.of(context).colorScheme.onSurfaceVariant)),
               ],
             ),
           ],
@@ -121,10 +126,13 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
               builder: (context, snapshot) {
                 final messages = snapshot.data ?? const <dm.Message>[];
                 // Auto-scroll when new messages arrive
-                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+                WidgetsBinding.instance
+                    .addPostFrameCallback((_) => _scrollToBottom());
 
                 // Mark unread incoming messages as read when visible
-                final unreadForMe = messages.where((m) => m.receiverId == me.id && !m.isRead).toList();
+                final unreadForMe = messages
+                    .where((m) => m.receiverId == me.id && !m.isRead)
+                    .toList();
                 if (unreadForMe.isNotEmpty) {
                   WidgetsBinding.instance.addPostFrameCallback((_) async {
                     final svc = provider.messageService;
@@ -132,7 +140,8 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                       try {
                         await svc.markAsRead(m.id);
                       } catch (e) {
-                        debugPrint('Failed to mark message ${m.id} as read: $e');
+                        debugPrint(
+                            'Failed to mark message ${m.id} as read: $e');
                       }
                     }
                   });
@@ -147,13 +156,17 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                     return Padding(
                       padding: AppSpacing.verticalXs,
                       child: Row(
-                        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                        mainAxisAlignment: isMe
+                            ? MainAxisAlignment.end
+                            : MainAxisAlignment.start,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (!isMe)
                             CircleAvatar(
                               radius: 16,
-                              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+                              backgroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHigh,
                               child: Text(
                                 widget.peer.codename[0].toUpperCase(),
                                 style: context.textStyles.labelSmall!.bold,
@@ -165,11 +178,17 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                               padding: AppSpacing.paddingMd,
                               decoration: BoxDecoration(
                                 color: isMe
-                                    ? Theme.of(context).colorScheme.primaryContainer
-                                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(AppRadius.md),
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .surfaceContainerHighest,
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.md),
                               ),
-                              child: Text(m.content, style: context.textStyles.bodyMedium),
+                              child: Text(m.content,
+                                  style: context.textStyles.bodyMedium),
                             ),
                           ),
                         ],
@@ -185,7 +204,11 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               border: Border(
-                top: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                top: BorderSide(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outline
+                        .withValues(alpha: 0.2)),
               ),
             ),
             child: SafeArea(
@@ -196,8 +219,10 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                       controller: _controller,
                       decoration: InputDecoration(
                         hintText: 'Message ${widget.peer.codename}...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.lg)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                       ),
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _send(),
@@ -206,7 +231,9 @@ class _DirectMessageScreenState extends State<DirectMessageScreen> {
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: _send,
-                    style: FilledButton.styleFrom(shape: const CircleBorder(), padding: const EdgeInsets.all(16)),
+                    style: FilledButton.styleFrom(
+                        shape: const CircleBorder(),
+                        padding: const EdgeInsets.all(16)),
                     child: const Icon(Icons.send),
                   ),
                 ],

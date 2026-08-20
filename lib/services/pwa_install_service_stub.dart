@@ -3,6 +3,7 @@ void initPwaInstallPrompt() {}
 
 bool canShowPwaInstallPrompt() => false;
 
-String? getPwaInstallBlocker() => 'Add to Home Screen is only available in supported browsers.';
+String? getPwaInstallBlocker() =>
+    'Add to Home Screen is only available in supported browsers.';
 
 Future<bool> showPwaInstallPrompt() async => false;

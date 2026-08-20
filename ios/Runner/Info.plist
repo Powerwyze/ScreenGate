@@ -29,11 +29,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Questime uses the camera to capture before and after mission photos for verification.</string>
+	<string>ScreenGate uses the camera to capture before and after mission photos for verification.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Questime can save mission photos to your library when you choose to keep them.</string>
+	<string>ScreenGate can save mission photos to your library when you choose to keep them.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Questime lets you choose mission photos from your library for verification.</string>
+	<string>ScreenGate lets you choose mission photos from your library for verification.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

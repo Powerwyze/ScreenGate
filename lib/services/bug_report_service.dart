@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:taskassassin/models/bug_report.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/models/bug_report.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 import 'package:uuid/uuid.dart';
 
 class BugReportService {
@@ -62,7 +62,8 @@ class BugReportService {
 
   Future<BugReport?> getBugReportById(String bugReportId) async {
     try {
-      final data = await SupabaseService.selectSingle('bug_reports', filters: {'id': bugReportId});
+      final data = await SupabaseService.selectSingle('bug_reports',
+          filters: {'id': bugReportId});
       if (data == null) return null;
       return BugReport.fromJson(data);
     } catch (e) {

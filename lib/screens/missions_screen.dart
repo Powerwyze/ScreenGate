@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/models/mission.dart';
-import 'package:taskassassin/theme.dart';
-import 'package:taskassassin/widgets/mission_card.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/models/mission.dart';
+import 'package:screengate/theme.dart';
+import 'package:screengate/widgets/mission_card.dart';
 
 class MissionsScreen extends StatefulWidget {
   const MissionsScreen({super.key});
@@ -32,7 +32,8 @@ class _MissionsScreenState extends State<MissionsScreen> {
         builder: (context, provider, _) {
           var missions = provider.missions;
           if (_filterStatus != null) {
-            missions = missions.where((m) => m.status == _filterStatus).toList();
+            missions =
+                missions.where((m) => m.status == _filterStatus).toList();
           }
 
           return Column(
@@ -43,10 +44,14 @@ class _MissionsScreenState extends State<MissionsScreen> {
                 child: Row(
                   children: [
                     _buildFilterChip('All', _filterStatus == null),
-                    _buildFilterChip('Pending', _filterStatus == MissionStatus.pending),
-                    _buildFilterChip('In Progress', _filterStatus == MissionStatus.inProgress),
-                    _buildFilterChip('Completed', _filterStatus == MissionStatus.completed),
-                    _buildFilterChip('Verified', _filterStatus == MissionStatus.verified),
+                    _buildFilterChip(
+                        'Pending', _filterStatus == MissionStatus.pending),
+                    _buildFilterChip('In Progress',
+                        _filterStatus == MissionStatus.inProgress),
+                    _buildFilterChip(
+                        'Completed', _filterStatus == MissionStatus.completed),
+                    _buildFilterChip(
+                        'Verified', _filterStatus == MissionStatus.verified),
                   ],
                 ),
               ),
@@ -80,7 +85,8 @@ class _MissionsScreenState extends State<MissionsScreen> {
                           final mission = missions[index];
                           return MissionCard(
                             mission: mission,
-                            onTap: () => context.push('/mission-detail', extra: mission),
+                            onTap: () =>
+                                context.push('/mission-detail', extra: mission),
                           );
                         },
                       ),
@@ -104,7 +110,9 @@ class _MissionsScreenState extends State<MissionsScreen> {
               _filterStatus = null;
             } else {
               _filterStatus = MissionStatus.values.firstWhere(
-                (s) => s.name.toLowerCase().replaceAll('_', ' ') == label.toLowerCase(),
+                (s) =>
+                    s.name.toLowerCase().replaceAll('_', ' ') ==
+                    label.toLowerCase(),
                 orElse: () => MissionStatus.pending,
               );
             }

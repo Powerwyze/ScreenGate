@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:taskassassin/models/notification.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/models/notification.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 import 'package:uuid/uuid.dart';
 
 class NotificationService {
@@ -18,7 +18,8 @@ class NotificationService {
         .eq('user_id', userId)
         .order('created_at', ascending: false)
         .limit(50)
-        .map((data) => data.map((json) => AppNotification.fromJson(json)).toList());
+        .map((data) =>
+            data.map((json) => AppNotification.fromJson(json)).toList());
   }
 
   Future<List<AppNotification>> getNotifications({int limit = 50}) async {
@@ -94,7 +95,8 @@ class NotificationService {
         filters: {'id': notificationId},
       );
     } catch (e) {
-      debugPrint('[NotificationService] Error marking notification as read: $e');
+      debugPrint(
+          '[NotificationService] Error marking notification as read: $e');
       rethrow;
     }
   }
@@ -117,7 +119,8 @@ class NotificationService {
 
   Future<void> deleteNotification(String notificationId) async {
     try {
-      await SupabaseService.delete('notifications', filters: {'id': notificationId});
+      await SupabaseService.delete('notifications',
+          filters: {'id': notificationId});
     } catch (e) {
       debugPrint('[NotificationService] Error deleting notification: $e');
       rethrow;

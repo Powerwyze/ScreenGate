@@ -6,11 +6,11 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 // Storage upload is centralized in ImageUploadService
-import 'package:taskassassin/services/image_upload_service.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/models/mission.dart';
-import 'package:taskassassin/models/user.dart';
-import 'package:taskassassin/theme.dart';
+import 'package:screengate/services/image_upload_service.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/models/mission.dart';
+import 'package:screengate/models/user.dart';
+import 'package:screengate/theme.dart';
 import 'package:intl/intl.dart';
 // Removed heavy image manipulation; reusing reliable avatar upload pipeline
 

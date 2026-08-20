@@ -2,7 +2,7 @@ package com.powerwyze.questime
 
 import android.content.Context
 
-object QuestimeControlStore {
+object ScreenGateControlStore {
     private const val preferencesName = "questime_controls"
     private const val blockedPackagesKey = "blocked_packages"
     private const val awardedMinutesKey = "awarded_minutes"

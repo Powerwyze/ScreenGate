@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:taskassassin/theme.dart';
+import 'package:screengate/theme.dart';
 
 class StatCard extends StatelessWidget {
   final IconData icon;

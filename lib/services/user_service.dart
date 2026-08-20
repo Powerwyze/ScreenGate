@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:taskassassin/models/user.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
-import 'package:taskassassin/services/mission_service.dart';
+import 'package:screengate/models/user.dart';
+import 'package:screengate/supabase/supabase_config.dart';
+import 'package:screengate/services/mission_service.dart';
 
 class UserService {
   UserService();

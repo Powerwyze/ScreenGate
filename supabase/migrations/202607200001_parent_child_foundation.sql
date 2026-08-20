@@ -1,4 +1,4 @@
--- Questime parent/child foundation. Apply through Supabase migrations after review.
+-- ScreenGate parent/child foundation. Apply through Supabase migrations after review.
 
 alter table public.users
   add column if not exists account_role text not null default 'parent'

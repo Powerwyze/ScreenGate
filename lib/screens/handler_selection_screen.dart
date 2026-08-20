@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:taskassassin/models/handler.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/theme.dart';
+import 'package:screengate/models/handler.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/theme.dart';
 
 class HandlerSelectionScreen extends StatefulWidget {
   const HandlerSelectionScreen({super.key});
@@ -50,7 +50,8 @@ class _HandlerSelectionScreenState extends State<HandlerSelectionScreen> {
           return ListView(
             padding: AppSpacing.paddingMd,
             children: categories.map((category) {
-              final categoryHandlers = handlers.where((h) => h.category == category).toList();
+              final categoryHandlers =
+                  handlers.where((h) => h.category == category).toList();
               if (categoryHandlers.isEmpty) return const SizedBox.shrink();
 
               return Column(
@@ -63,7 +64,8 @@ class _HandlerSelectionScreenState extends State<HandlerSelectionScreen> {
                       style: context.textStyles.titleLarge!.bold,
                     ),
                   ),
-                  ...categoryHandlers.map((handler) => _buildHandlerCard(handler)),
+                  ...categoryHandlers
+                      .map((handler) => _buildHandlerCard(handler)),
                   const SizedBox(height: 16),
                 ],
               );
@@ -84,10 +86,14 @@ class _HandlerSelectionScreenState extends State<HandlerSelectionScreen> {
         margin: AppSpacing.verticalXs,
         padding: AppSpacing.paddingMd,
         decoration: BoxDecoration(
-          color: isSelected ? theme.colorScheme.primaryContainer : theme.colorScheme.surface,
+          color: isSelected
+              ? theme.colorScheme.primaryContainer
+              : theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
-            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline.withValues(alpha: 0.3),
+            color: isSelected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outline.withValues(alpha: 0.3),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -99,16 +105,19 @@ class _HandlerSelectionScreenState extends State<HandlerSelectionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(handler.name, style: context.textStyles.titleMedium!.semiBold),
+                  Text(handler.name,
+                      style: context.textStyles.titleMedium!.semiBold),
                   const SizedBox(height: 4),
                   Text(
                     handler.description,
-                    style: context.textStyles.bodySmall!.withColor(theme.colorScheme.onSurfaceVariant),
+                    style: context.textStyles.bodySmall!
+                        .withColor(theme.colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),
             ),
-            if (isSelected) Icon(Icons.check_circle, color: theme.colorScheme.primary),
+            if (isSelected)
+              Icon(Icons.check_circle, color: theme.colorScheme.primary),
           ],
         ),
       ),

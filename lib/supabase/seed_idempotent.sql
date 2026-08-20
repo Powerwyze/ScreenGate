@@ -1,4 +1,4 @@
--- Idempotent seed for TaskAssassin. Safe to run multiple times.
+-- Idempotent seed for ScreenGate. Safe to run multiple times.
 -- Run from Supabase SQL Editor. Uses SECURITY DEFINER to bypass RLS for seeding.
 
 create or replace function app_private.seed_taskassassin()
@@ -90,7 +90,7 @@ begin
     gen_random_uuid()::text,
     '00000000-0000-0000-0000-000000000001',
     'missionAssigned',
-    'Welcome to TaskAssassin',
+    'Welcome to ScreenGate',
     'You have 2 missions waiting for you',
     '{}'::jsonb,
     false,

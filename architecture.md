@@ -1,12 +1,12 @@
-# Questime Architecture
+# ScreenGate Architecture
 
 ## Overview
-Questime is a quest-based productivity app. It turns time and goals into concrete quests with AI verification, personalized Handler coaching, and social accountability.
+ScreenGate is a quest-based productivity app. It turns time and goals into concrete quests with AI verification, personalized Handler coaching, and social accountability.
 
-The repo still keeps the Flutter package name `taskassassin` for now so existing Dart imports remain stable during the product pivot.
+The Flutter package name is `screengate`.
 
 ## Backend: Supabase
-Questime uses Supabase for:
+ScreenGate uses Supabase for:
 - Authentication: email/password and Google sign-in
 - Database: PostgreSQL tables for users, quests, social graph, messages, notifications, and bug reports
 - Storage: Supabase Storage for avatars and quest proof photos
@@ -43,4 +43,4 @@ Required Edge Function secrets:
 - The Edge Function validates Supabase auth, request size, action names, and image hosts before calling Gemini.
 
 ## Current Pivot Scope
-This branch changes product-facing naming to Questime and moves Gemini out of the Flutter client. A full internal package rename from `taskassassin` to `questime` should be a separate mechanical change because it touches every Dart package import and native bundle identifier.
+ScreenGate routes Gemini requests through Supabase so provider credentials remain outside the Flutter client. Store bundle identifiers and existing Supabase schema names remain stable for upgrade and data compatibility.

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as image;
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 
 class ImageUploadService {
   ImageUploadService._();

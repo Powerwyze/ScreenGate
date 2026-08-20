@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:taskassassin/auth/supabase_auth_manager.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/services/family_service.dart';
+import 'package:screengate/auth/supabase_auth_manager.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/services/family_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -173,7 +173,7 @@ class _AuthScreenState extends State<AuthScreen> {
             normalizedError.contains('socketexception') ||
             normalizedError.contains('network')) {
           msg =
-              'Questime can\'t reach its server right now. Please try again soon.';
+              'ScreenGate can\'t reach its server right now. Please try again soon.';
         } else {
           msg = 'Authentication error: $err';
         }
@@ -197,7 +197,7 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Questime logo
+              // ScreenGate logo
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: Image.asset(

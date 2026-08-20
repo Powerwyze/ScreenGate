@@ -1,4 +1,4 @@
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 
 class RewardService {
   Future<int> getAvailableMinutes() async {

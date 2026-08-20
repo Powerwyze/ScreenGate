@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:taskassassin/models/bug_report.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/theme.dart';
+import 'package:screengate/models/bug_report.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/theme.dart';
 
 class BugReportScreen extends StatefulWidget {
   const BugReportScreen({super.key});
@@ -49,7 +49,8 @@ class _BugReportScreenState extends State<BugReportScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Bug report submitted successfully! Thank you for your feedback.'),
+            content: Text(
+                'Bug report submitted successfully! Thank you for your feedback.'),
             backgroundColor: Colors.green,
           ),
         );
@@ -99,7 +100,7 @@ class _BugReportScreenState extends State<BugReportScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Help us improve TaskAssassin by reporting bugs or issues you encounter.',
+                        'Help us improve ScreenGate by reporting bugs or issues you encounter.',
                         style: context.textStyles.bodyMedium,
                       ),
                     ),
@@ -107,7 +108,8 @@ class _BugReportScreenState extends State<BugReportScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              Text('Bug Title', style: context.textStyles.titleMedium!.semiBold),
+              Text('Bug Title',
+                  style: context.textStyles.titleMedium!.semiBold),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _titleController,
@@ -154,13 +156,15 @@ class _BugReportScreenState extends State<BugReportScreen> {
                 },
               ),
               const SizedBox(height: 24),
-              Text('Description', style: context.textStyles.titleMedium!.semiBold),
+              Text('Description',
+                  style: context.textStyles.titleMedium!.semiBold),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 8,
                 decoration: const InputDecoration(
-                  hintText: 'Please describe the bug in detail:\n\n• What were you trying to do?\n• What happened?\n• What did you expect to happen?\n• Steps to reproduce (if applicable)',
+                  hintText:
+                      'Please describe the bug in detail:\n\n• What were you trying to do?\n• What happened?\n• What did you expect to happen?\n• Steps to reproduce (if applicable)',
                   border: OutlineInputBorder(),
                   alignLabelWithHint: true,
                 ),

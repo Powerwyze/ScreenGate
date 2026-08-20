@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import 'package:taskassassin/models/message.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
+import 'package:screengate/models/message.dart';
+import 'package:screengate/supabase/supabase_config.dart';
 
 class MessageService {
   MessageService();
@@ -122,21 +122,21 @@ class MessageService {
         .stream(primaryKey: ['id'])
         .order('created_at', ascending: true)
         .listen((data) {
-      final updates = data
-          .where((msg) {
-            final senderId = msg['sender_id'] as String;
-            final receiverId = msg['receiver_id'] as String;
-            return (senderId == userId1 && receiverId == userId2) ||
-                (senderId == userId2 && receiverId == userId1);
-          })
-          .map((json) => Message.fromJson(json))
-          .toList();
-      if (updates.isNotEmpty) {
-        emit(updates);
-      }
-    }, onError: (e) {
-      debugPrint('[MessageService] Realtime conversation stream error: $e');
-    });
+          final updates = data
+              .where((msg) {
+                final senderId = msg['sender_id'] as String;
+                final receiverId = msg['receiver_id'] as String;
+                return (senderId == userId1 && receiverId == userId2) ||
+                    (senderId == userId2 && receiverId == userId1);
+              })
+              .map((json) => Message.fromJson(json))
+              .toList();
+          if (updates.isNotEmpty) {
+            emit(updates);
+          }
+        }, onError: (e) {
+          debugPrint('[MessageService] Realtime conversation stream error: $e');
+        });
 
     // Fallback polling to handle any missed realtime events (e.g., dropped websocket)
     final pollTimer = Timer.periodic(const Duration(seconds: 4), (_) async {

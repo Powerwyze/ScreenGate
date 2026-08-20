@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:taskassassin/providers/app_provider.dart';
-import 'package:taskassassin/theme.dart';
-import 'package:taskassassin/models/achievement.dart';
+import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/theme.dart';
+import 'package:screengate/models/achievement.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:taskassassin/services/image_upload_service.dart';
-import 'package:taskassassin/services/mission_service.dart';
-import 'package:taskassassin/services/parent_gate_service.dart';
+import 'package:screengate/services/image_upload_service.dart';
+import 'package:screengate/services/mission_service.dart';
+import 'package:screengate/services/parent_gate_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});

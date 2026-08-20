@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:taskassassin/auth/auth_manager.dart';
-import 'package:taskassassin/supabase/supabase_config.dart';
-import 'package:taskassassin/models/user.dart' as app_user;
+import 'package:screengate/auth/auth_manager.dart';
+import 'package:screengate/supabase/supabase_config.dart';
+import 'package:screengate/models/user.dart' as app_user;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseAuthManager extends AuthManager with EmailSignInManager {
