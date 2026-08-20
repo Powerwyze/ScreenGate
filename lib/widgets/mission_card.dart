@@ -37,7 +37,7 @@ class MissionCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'GOAL: ${mission.title.toUpperCase()}',
+                        mission.title,
                         style: context.textStyles.titleSmall!.copyWith(
                           color: CyberpunkColors.textPrimary,
                           fontWeight: FontWeight.bold,

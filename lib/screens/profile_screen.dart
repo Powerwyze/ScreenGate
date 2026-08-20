@@ -86,15 +86,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await provider.loadMissions();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Welcome mission created! Check your missions.')),
+          const SnackBar(content: Text('Welcome task made! Check your tasks.')),
         );
       }
     } catch (e) {
       debugPrint('Welcome mission creation error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create welcome mission: $e')),
+          const SnackBar(content: Text('We could not make the welcome task.')),
         );
       }
     } finally {
@@ -334,7 +333,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.rocket_launch),
-                      label: const Text('Create Welcome Mission (Test)'),
+                      label: const Text('Make Welcome Task (Test)'),
                     ),
                   ),
                   const SizedBox(height: 24),

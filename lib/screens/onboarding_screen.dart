@@ -231,7 +231,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Turn important tasks into quests, then earn time for fun.',
+            'Finish tasks. Earn time for fun.',
             style: context.textStyles.bodyLarge!.withColor(
               Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -247,7 +247,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   role: AccountRole.parent,
                   icon: Icons.family_restroom,
                   title: 'Parent',
-                  subtitle: 'I make and approve quests',
+                  subtitle: 'I make and approve tasks',
                 ),
               ),
               const SizedBox(width: 12),
@@ -256,7 +256,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   role: AccountRole.child,
                   icon: Icons.stars_rounded,
                   title: 'Child',
-                  subtitle: 'I complete my quests',
+                  subtitle: 'I finish my tasks',
                 ),
               ),
             ],
@@ -353,7 +353,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Your AI coach who will guide, motivate, and verify your missions.',
+                'Your helper will cheer you on.',
                 style: context.textStyles.bodyMedium!.withColor(
                   Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -448,7 +448,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Your Handler will use these to suggest relevant missions and provide personalized motivation.',
+            'Your helper will use these to suggest tasks for you.',
             style: context.textStyles.bodyMedium!.withColor(
               Theme.of(context).colorScheme.onSurfaceVariant,
             ),

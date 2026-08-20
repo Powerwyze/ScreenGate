@@ -101,8 +101,8 @@ class AIService {
 
       return {
         'stars': _coerceStars(result['stars']),
-        'feedback': result['feedback']?.toString() ??
-            'Great job completing this quest!',
+        'feedback':
+            result['feedback']?.toString() ?? 'Great job finishing this task!',
       };
     } catch (e) {
       debugPrint('[AIService] Verify mission error: $e');
@@ -164,14 +164,14 @@ class AIService {
       }
 
       return [
-        'Complete a daily quest',
+        'Finish a task today',
         'Practice a new skill',
         'Help someone today'
       ];
     } catch (e) {
       debugPrint('[AIService] Generate mission suggestions error: $e');
       return [
-        'Complete a daily quest',
+        'Finish a task today',
         'Practice a new skill',
         'Help someone today'
       ];

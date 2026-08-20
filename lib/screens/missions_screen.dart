@@ -20,7 +20,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Missions'),
+        title: const Text('Tasks'),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -65,12 +65,12 @@ class _MissionsScreenState extends State<MissionsScreen> {
                             Text('📋', style: context.textStyles.displayMedium),
                             const SizedBox(height: 16),
                             Text(
-                              'No missions found',
+                              'No tasks found',
                               style: context.textStyles.titleLarge,
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Create a mission to get started',
+                              'Make a task to get started',
                               style: context.textStyles.bodyMedium!.withColor(
                                 Theme.of(context).colorScheme.onSurfaceVariant,
                               ),

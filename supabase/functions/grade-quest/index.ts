@@ -24,8 +24,8 @@ Deno.serve(async (request) => {
     );
     const { data: quest, error } = await admin.from("missions").select("*")
       .eq("id", missionId).single();
-    if (error || !quest) throw new Error("Quest not found");
-    if (quest.approval_mode !== "ai") throw new Error("This quest uses parent approval");
+    if (error || !quest) throw new Error("Task not found");
+    if (quest.approval_mode !== "ai") throw new Error("This task uses parent approval");
     if (!quest.before_photo_url || !quest.after_photo_url) {
       throw new Error("Both photos are required");
     }
@@ -47,11 +47,10 @@ Deno.serve(async (request) => {
           content: [
             {
               type: "text",
-              text: `Compare the before and after photos for this family quest.
-Quest: ${quest.title}
-Instructions: ${quest.description}
-Done means: ${quest.completed_state}
-Return JSON only: {"rating": number, "feedback": string}. Rating must be 1 to 5 in 0.5 increments. Judge visible improvement and whether the done criteria are met. Keep feedback kind, specific, and under 30 words.`,
+              text: `Compare the before and after photos for this family task.
+Task: ${quest.title}
+What to do: ${quest.description}
+Return JSON only: {"rating": number, "feedback": string}. Rating must be 1 to 5 in 0.5 increments. Judge visible improvement and whether the task was done. Keep feedback kind, simple, specific, and under 20 words.`,
             },
             { type: "image_url", image_url: { url: quest.before_photo_url } },
             { type: "image_url", image_url: { url: quest.after_photo_url } },
@@ -60,7 +59,9 @@ Return JSON only: {"rating": number, "feedback": string}. Rating must be 1 to 5 
       }),
     });
     if (!openAIResponse.ok) {
-      throw new Error(`OpenAI grading failed (${openAIResponse.status})`);
+      const failure = await openAIResponse.text();
+      console.error("OpenAI grading failed", openAIResponse.status, failure);
+      throw new Error("AI could not check the pictures. Try again.");
     }
     const openAI = await openAIResponse.json();
     const result = JSON.parse(openAI.choices[0].message.content);

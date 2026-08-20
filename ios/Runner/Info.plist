@@ -29,11 +29,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>ScreenGate uses the camera to capture before and after mission photos for verification.</string>
+	<string>ScreenGate uses the camera to take before and after task pictures.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>ScreenGate can save mission photos to your library when you choose to keep them.</string>
+	<string>ScreenGate can save task pictures when you choose to keep them.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>ScreenGate lets you choose mission photos from your library for verification.</string>
+	<string>ScreenGate lets you choose task pictures from your photo library.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

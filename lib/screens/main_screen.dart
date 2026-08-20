@@ -98,9 +98,12 @@ class _ParentHomeState extends State<_ParentHome> {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final name = provider.currentUser!.codename;
-    final pending = provider.missions
+    final pendingTasks = provider.missions
+        .where((mission) => mission.status == MissionStatus.pending)
+        .toList();
+    final waitingApproval = provider.missions
         .where((mission) => mission.status == MissionStatus.completed)
-        .length;
+        .toList();
 
     return _Page(
       title: 'Hi, $name',
@@ -127,8 +130,7 @@ class _ParentHomeState extends State<_ParentHome> {
               return _HeroPanel(
                 icon: Icons.child_care_rounded,
                 title: 'Add your child',
-                body:
-                    'Pair their phone to start quests and screen-time rewards.',
+                body: 'Pair their phone to start tasks and earn play time.',
                 action: 'PAIR A PHONE',
                 onTap: () => _showPairingSoon(context),
               );
@@ -163,8 +165,7 @@ class _ParentHomeState extends State<_ParentHome> {
                   icon: Icons.devices_rounded,
                   title:
                       '$phoneCount child ${phoneCount == 1 ? 'phone' : 'phones'} connected',
-                  body:
-                      'Choose a child below to see their ScreenGate activity.',
+                  body: 'Pick a child to see their tasks and play time.',
                   action: 'REFRESH',
                   onTap: _refresh,
                 ),
@@ -201,7 +202,7 @@ class _ParentHomeState extends State<_ParentHome> {
                         color: const Color(0xFFFFF1D0),
                         icon: Icons.task_alt_rounded,
                         value: '$completed/${selectedMissions.length}',
-                        label: 'quests done',
+                        label: 'tasks done',
                       ),
                     ),
                   ],
@@ -211,19 +212,19 @@ class _ParentHomeState extends State<_ParentHome> {
           },
         ),
         const SizedBox(height: 28),
-        _SectionTitle(
-          title: 'Needs your attention',
-          action: pending == 0 ? null : '$pending waiting',
-        ),
+        const _SectionTitle(title: 'Tasks waiting'),
         const SizedBox(height: 12),
-        _AttentionRow(
-          icon: pending == 0 ? Icons.check_circle_rounded : Icons.hourglass_top,
-          color: pending == 0 ? _teal : _coral,
-          title: pending == 0 ? 'All caught up' : '$pending quests to approve',
-          subtitle: pending == 0
-              ? 'Completed quests will appear here.'
-              : 'Review completed quests and award time.',
-        ),
+        if (pendingTasks.isEmpty && waitingApproval.isEmpty)
+          const _AttentionRow(
+            icon: Icons.check_circle_rounded,
+            color: _teal,
+            title: 'All done for now',
+            subtitle: 'New and finished tasks will show here.',
+          )
+        else ...[
+          ...waitingApproval.take(3).map((task) => _QuestRow(mission: task)),
+          ...pendingTasks.take(3).map((task) => _QuestRow(mission: task)),
+        ],
         const SizedBox(height: 28),
         const _SectionTitle(title: 'Quick actions'),
         const SizedBox(height: 12),
@@ -232,7 +233,7 @@ class _ParentHomeState extends State<_ParentHome> {
             Expanded(
               child: _ActionTile(
                 icon: Icons.add_task_rounded,
-                label: 'New quest',
+                label: 'New task',
                 color: _teal,
                 onTap: () => context.push('/create-mission'),
               ),
@@ -254,7 +255,7 @@ class _ParentHomeState extends State<_ParentHome> {
           child: OutlinedButton.icon(
             onPressed: () => context.read<AppProvider>().setCurrentTab(3),
             icon: const Icon(Icons.phonelink_lock_rounded),
-            label: const Text('CHOOSE APPS FOR MYSELF'),
+            label: const Text('PICK MY BLOCKED APPS'),
           ),
         ),
       ],
@@ -274,8 +275,8 @@ class _ChildHome extends StatelessWidget {
     return _Page(
       title: 'Hey, ${provider.currentUser!.codename}!',
       subtitle: missions.isEmpty
-          ? 'You are ready for a new quest.'
-          : 'Pick one quest to start.',
+          ? 'You are ready for a new task.'
+          : 'Pick one task to start.',
       children: [
         Container(
           padding: const EdgeInsets.all(24),
@@ -307,13 +308,13 @@ class _ChildHome extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 28),
-        const _SectionTitle(title: "Today's quests"),
+        const _SectionTitle(title: "Today's tasks"),
         const SizedBox(height: 12),
         if (missions.isEmpty)
           const _EmptyState(
             icon: Icons.celebration_rounded,
-            title: 'No quests yet',
-            body: 'Ask your parent to send your first quest.',
+            title: 'No tasks yet',
+            body: 'Ask your parent to make a task.',
           )
         else
           ...missions.take(4).map((mission) => _QuestRow(mission: mission)),
@@ -330,10 +331,10 @@ class _QuestList extends StatelessWidget {
   Widget build(BuildContext context) {
     final missions = context.watch<AppProvider>().missions;
     return _Page(
-      title: isParent ? 'Quests' : 'Today',
+      title: isParent ? 'Tasks' : 'Today',
       subtitle: isParent
-          ? 'Small wins earn meaningful time.'
-          : 'Finish a quest. Earn your time.',
+          ? 'Make a task. Give play time.'
+          : 'Finish a task. Earn play time.',
       trailing: isParent
           ? _RoundIcon(
               icon: Icons.add_rounded,
@@ -343,11 +344,11 @@ class _QuestList extends StatelessWidget {
         if (missions.isEmpty)
           _EmptyState(
             icon: Icons.checklist_rounded,
-            title: isParent ? 'Make the first quest' : 'Nothing here yet',
+            title: isParent ? 'Make the first task' : 'Nothing here yet',
             body: isParent
-                ? 'Choose one clear task your child can finish today.'
-                : 'Your parent will add a quest for you.',
-            action: isParent ? 'CREATE A QUEST' : null,
+                ? 'Pick one easy thing to do today.'
+                : 'Your parent will add a task for you.',
+            action: isParent ? 'MAKE A TASK' : null,
             onTap: isParent ? () => context.push('/create-mission') : null,
           )
         else
@@ -357,8 +358,15 @@ class _QuestList extends StatelessWidget {
   }
 }
 
-class _FamilyScreen extends StatelessWidget {
+class _FamilyScreen extends StatefulWidget {
   const _FamilyScreen();
+
+  @override
+  State<_FamilyScreen> createState() => _FamilyScreenState();
+}
+
+class _FamilyScreenState extends State<_FamilyScreen> {
+  late Future<List<FamilyChild>> _children = FamilyService().getChildren();
 
   @override
   Widget build(BuildContext context) {
@@ -367,7 +375,7 @@ class _FamilyScreen extends StatelessWidget {
       subtitle: 'The phones connected to ScreenGate',
       children: [
         FutureBuilder<List<FamilyChild>>(
-          future: FamilyService().getChildren(),
+          future: _children,
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
@@ -418,7 +426,12 @@ class _FamilyScreen extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
-            onPressed: () => _showPairingSoon(context),
+            onPressed: () async {
+              await _showPairingSoon(context);
+              if (mounted) {
+                setState(() => _children = FamilyService().getChildren());
+              }
+            },
             icon: const Icon(Icons.link_rounded),
             label: const Text('PAIR A CHILD PHONE'),
           ),
@@ -438,15 +451,15 @@ class _RewardsScreen extends StatelessWidget {
     final time = _timeText(provider.availableRewardSeconds);
     return _Page(
       title: 'Rewards',
-      subtitle: 'Time you earned by finishing quests',
+      subtitle: 'Play time you earned from tasks',
       children: [
         _EmptyState(
           icon:
               minutes > 0 ? Icons.sports_esports_rounded : Icons.stars_rounded,
           title: minutes > 0 ? '$time ready' : 'No play time yet',
           body: minutes > 0
-              ? 'Your approved quest time is ready to use.'
-              : 'Finish a quest and ask your parent to approve it.',
+              ? 'Your play time is ready.'
+              : 'Finish a task to earn play time.',
         ),
       ],
     );
@@ -477,7 +490,7 @@ class _ProgressScreen extends StatelessWidget {
         : ((passed.length / missions.length) * 100).round();
     return _Page(
       title: 'My progress',
-      subtitle: 'Every finished quest counts',
+      subtitle: 'Every finished task counts',
       children: [
         Row(
           children: [
@@ -494,17 +507,17 @@ class _ProgressScreen extends StatelessWidget {
                     color: const Color(0xFFFFE5DF),
                     icon: Icons.task_alt_rounded,
                     value: '${finished.length}',
-                    label: 'finished')),
+                    label: 'tasks done')),
           ],
         ),
         const SizedBox(height: 12),
         _AttentionRow(
           icon: Icons.insights_rounded,
           color: _teal,
-          title: '$completionRate% of quests passed',
+          title: '$completionRate% of tasks passed',
           subtitle: missions.isEmpty
-              ? 'Your progress will appear after your first quest.'
-              : '${passed.length} passed out of ${missions.length} total quests',
+              ? 'Your stars show after your first task.'
+              : '${passed.length} passed out of ${missions.length} tasks',
         ),
         if (finished.isNotEmpty) ...[
           const SizedBox(height: 24),
@@ -529,13 +542,44 @@ class _ProgressScreen extends StatelessWidget {
   }
 }
 
-class _SettingsScreen extends StatelessWidget {
+class _SettingsScreen extends StatefulWidget {
   const _SettingsScreen();
+
+  @override
+  State<_SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<_SettingsScreen> {
+  bool _childUnlocked = false;
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final user = provider.currentUser!;
+    final isChild = user.accountRole == AccountRole.child;
+
+    if (isChild && !_childUnlocked) {
+      return _Page(
+        title: 'Grown-ups only',
+        subtitle: 'Settings are locked',
+        children: [
+          _EmptyState(
+            icon: Icons.lock_rounded,
+            title: 'Ask your parent',
+            body: 'Your parent can type your ScreenGate password.',
+            action: 'UNLOCK SETTINGS',
+            onTap: () async {
+              final unlocked = await requireParentPassword(
+                context,
+                email: user.email,
+                action: 'open settings',
+              );
+              if (unlocked && mounted) setState(() => _childUnlocked = true);
+            },
+          ),
+        ],
+      );
+    }
     return _Page(
       title: 'Settings',
       subtitle: user.email,
@@ -552,6 +596,17 @@ class _SettingsScreen extends StatelessWidget {
         _ScreenTimeSetup(
           soloMode: user.accountRole == AccountRole.parent,
         ),
+        if (!isChild) ...[
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => context.push('/bug-report'),
+              icon: const Icon(Icons.bug_report_rounded),
+              label: const Text('REPORT A PROBLEM'),
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
         SizedBox(
           width: double.infinity,
@@ -701,8 +756,7 @@ class _Metric extends StatelessWidget {
 
 class _SectionTitle extends StatelessWidget {
   final String title;
-  final String? action;
-  const _SectionTitle({required this.title, this.action});
+  const _SectionTitle({required this.title});
   @override
   Widget build(BuildContext context) => Row(
         children: [
@@ -710,10 +764,6 @@ class _SectionTitle extends StatelessWidget {
               child: Text(title,
                   style: const TextStyle(
                       color: _ink, fontSize: 19, fontWeight: FontWeight.w800))),
-          if (action != null)
-            Text(action!,
-                style:
-                    const TextStyle(color: _teal, fontWeight: FontWeight.w700)),
         ],
       );
 }
@@ -878,8 +928,8 @@ class _ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
         onTap: onTap ??
-            () => context
-                .push(label == 'New quest' ? '/create-mission' : '/home'),
+            () =>
+                context.push(label == 'New task' ? '/create-mission' : '/home'),
         borderRadius: BorderRadius.circular(8),
         child: Container(
           constraints: const BoxConstraints(minHeight: 104),
@@ -905,10 +955,6 @@ class _QuestRow extends StatelessWidget {
   const _QuestRow({required this.mission});
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final canApprove =
-        provider.currentUser?.accountRole == AccountRole.parent &&
-            mission.status == MissionStatus.completed;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -921,12 +967,32 @@ class _QuestRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: const Color(0xFFDDE5E5))),
           child: Row(children: [
-            Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                    color: _mint, borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.check_rounded, color: _teal)),
+            FutureBuilder<List<FamilyChild>>(
+              future: FamilyService().getChildren(),
+              builder: (context, snapshot) {
+                final matches = (snapshot.data ?? const <FamilyChild>[])
+                    .where((child) => child.id == mission.userId);
+                final name = matches.isEmpty ? 'Me' : matches.first.name;
+                final colors = [
+                  _mint,
+                  const Color(0xFFFFE5DF),
+                  const Color(0xFFFFF1D0),
+                  const Color(0xFFE4E7FF),
+                ];
+                final index = name.codeUnits.fold<int>(0, (a, b) => a + b) %
+                    colors.length;
+                return Tooltip(
+                  message: name,
+                  child: CircleAvatar(
+                    radius: 22,
+                    backgroundColor: colors[index],
+                    foregroundColor: _ink,
+                    child: Text(name.characters.first.toUpperCase(),
+                        style: const TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                );
+              },
+            ),
             const SizedBox(width: 14),
             Expanded(
                 child: Column(
@@ -939,29 +1005,23 @@ class _QuestRow extends StatelessWidget {
                           fontWeight: FontWeight.w800)),
                   const SizedBox(height: 3),
                   Text(
-                      '${mission.rewardMinutes} min reward • ${mission.status.name}',
+                      '${mission.rewardMinutes} min • ${_taskStatus(mission.status)}',
                       style: const TextStyle(color: Color(0xFF667684))),
                 ])),
-            if (canApprove)
-              FilledButton(
-                onPressed: () async {
-                  await context.read<AppProvider>().approveMission(mission.id);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content:
-                          Text('${mission.rewardMinutes} minutes approved'),
-                    ));
-                  }
-                },
-                child: const Text('APPROVE'),
-              )
-            else
-              const Icon(Icons.chevron_right_rounded, color: Color(0xFF8A9AA6)),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFF8A9AA6)),
           ]),
         ),
       ),
     );
   }
+
+  String _taskStatus(MissionStatus status) => switch (status) {
+        MissionStatus.pending => 'Ready to start',
+        MissionStatus.inProgress => 'Doing now',
+        MissionStatus.completed => 'Waiting for approval',
+        MissionStatus.verified => 'Done',
+        MissionStatus.failed => 'Try again',
+      };
 }
 
 class _ScreenTimeSetup extends StatefulWidget {
@@ -1037,7 +1097,6 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
   }
 
   Future<void> _chooseApps() async {
-    if (_apps.isEmpty) return;
     final user = context.read<AppProvider>().currentUser;
     if (user == null) return;
     final unlocked = await requireParentPassword(
@@ -1046,6 +1105,31 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
       action: 'change blocked apps',
     );
     if (!unlocked || !mounted) return;
+
+    final device = await ScreenTimeService().status();
+    if (device.platform == 'ios') {
+      try {
+        await ScreenTimeService().chooseIOSApps();
+        await _loadConfiguration();
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Turn on Screen Time, then try again.')),
+          );
+        }
+      }
+      return;
+    }
+    if (_apps.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No apps were found. Try again.')),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
 
     final draft = Set<String>.from(_selectedPackages);
     final saved = await showDialog<Set<String>>(
@@ -1110,17 +1194,27 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
         builder: (context, snapshot) {
           final status = snapshot.data;
           if (status?.platform != 'android') {
+            final hasApps = _selectedPackages.isNotEmpty;
             return _EmptyState(
               icon: status?.authorized == true
-                  ? Icons.verified_user_rounded
+                  ? Icons.apps_rounded
                   : Icons.phonelink_lock_rounded,
               title: status?.authorized == true
-                  ? 'Screen Time is ready'
+                  ? hasApps
+                      ? 'Apps are picked'
+                      : 'Pick apps to block'
                   : 'Turn on Screen Time',
-              body:
-                  'A parent must approve Apple Family Controls on this iPhone.',
-              action: status?.authorized == true ? null : 'TURN ON',
-              onTap: status?.authorized == true ? null : _enable,
+              body: status?.authorized == true
+                  ? hasApps
+                      ? 'Tap below if you want to change the apps.'
+                      : 'Pick games and video apps to block.'
+                  : 'A parent must tap Turn On on this iPhone.',
+              action: status?.authorized == true
+                  ? hasApps
+                      ? 'CHANGE APPS'
+                      : 'PICK APPS'
+                  : 'TURN ON',
+              onTap: status?.authorized == true ? _chooseApps : _enable,
             );
           }
 
@@ -1170,7 +1264,7 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
                       : 'Allow ScreenGate to block apps',
                   detail: status?.authorized == true
                       ? widget.soloMode
-                          ? 'Complete your own quests to earn access.'
+                          ? 'Finish your own tasks to earn access.'
                           : 'ScreenGate can now stop selected apps.'
                       : 'On the next screen, tap ScreenGate and turn it on.',
                   complete: status?.authorized == true,
@@ -1317,8 +1411,8 @@ class _RoundIcon extends StatelessWidget {
       IconButton.filledTonal(onPressed: onTap, icon: Icon(icon, color: _ink));
 }
 
-void _showPairingSoon(BuildContext context) {
-  showDialog<void>(
+Future<void> _showPairingSoon(BuildContext context) {
+  return showDialog<void>(
     context: context,
     builder: (_) => const _PairingCodeDialog(),
   );
@@ -1379,8 +1473,8 @@ class _LimitsDialogState extends State<_LimitsDialog> {
                 ),
                 DropdownButtonFormField<int>(
                   initialValue: _reward,
-                  decoration:
-                      const InputDecoration(labelText: 'Default quest reward'),
+                  decoration: const InputDecoration(
+                      labelText: 'Play time for each task'),
                   items: const [10, 15, 20, 30, 45, 60]
                       .map((value) => DropdownMenuItem(
                           value: value, child: Text('$value minutes')))

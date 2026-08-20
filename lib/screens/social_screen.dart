@@ -242,7 +242,7 @@ class _FriendsTabState extends State<_FriendsTab> {
             ),
             ListTile(
               leading: const Icon(Icons.assignment),
-              title: const Text('Assign Mission'),
+              title: const Text('Give a Task'),
               onTap: () {
                 Navigator.pop(context);
                 _assignMission(friendUser);

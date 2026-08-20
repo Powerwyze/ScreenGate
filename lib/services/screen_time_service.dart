@@ -98,7 +98,7 @@ class ScreenTimeService {
   }
 
   Future<ScreenTimeConfiguration> getConfiguration() async {
-    if (!Platform.isAndroid) {
+    if (!Platform.isIOS && !Platform.isAndroid) {
       return const ScreenTimeConfiguration(
           packages: <String>{}, remainingSeconds: 0);
     }
@@ -112,6 +112,11 @@ class ScreenTimeService {
     );
   }
 
+  Future<bool> chooseIOSApps() async {
+    if (!Platform.isIOS) return false;
+    return await _channel.invokeMethod<bool>('pickApps') ?? false;
+  }
+
   Future<void> configureAndroid({
     Set<String>? packages,
     required int awardedMinutes,
@@ -119,6 +124,13 @@ class ScreenTimeService {
     if (!Platform.isAndroid) return;
     await _channel.invokeMethod<void>('configure', {
       if (packages != null) 'packages': packages.toList(),
+      'awardedMinutes': awardedMinutes,
+    });
+  }
+
+  Future<void> syncAllowance({required int awardedMinutes}) async {
+    if (!Platform.isIOS && !Platform.isAndroid) return;
+    await _channel.invokeMethod<void>('configure', {
       'awardedMinutes': awardedMinutes,
     });
   }
@@ -146,7 +158,7 @@ class ScreenTimeService {
       'p_device_role': role,
       'p_device_name': value.deviceName,
       'p_os_version': value.osVersion,
-      'p_app_version': '1.6.0',
+      'p_app_version': '1.7.0',
       'p_screen_time_authorized': value.authorized,
       'p_remaining_seconds': remainingSeconds,
     });

@@ -152,7 +152,7 @@ class PushNotificationService {
     if (notification == null) return;
 
     const androidDetails = AndroidNotificationDetails(
-      'questime_default',
+      'screengate_default',
       'ScreenGate Notifications',
       channelDescription: 'General notifications for ScreenGate',
       importance: Importance.high,

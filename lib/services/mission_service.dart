@@ -61,12 +61,26 @@ class MissionService {
           await _notificationService.createNotification(
             userId: assignedToUserId,
             type: NotificationType.missionAssigned,
-            title: 'New Quest',
-            message: '$assignerName sent you a quest: $title',
+            title: 'Hooray! A new task!',
+            message: '$assignerName made "$title" for you. You can do it!',
             data: {'mission_id': mission.id},
           );
         } catch (error) {
           debugPrint('[MissionService] Notification skipped: $error');
+        }
+      }
+
+      if (assignedByUserId != null) {
+        try {
+          await _notificationService.createNotification(
+            userId: assignedByUserId,
+            type: NotificationType.missionAssigned,
+            title: 'Your task is ready!',
+            message: 'You made "$title". Nice job!',
+            data: {'mission_id': mission.id},
+          );
+        } catch (error) {
+          debugPrint('[MissionService] Parent notification skipped: $error');
         }
       }
 
@@ -128,8 +142,13 @@ class MissionService {
       'grade-quest',
       body: {'missionId': missionId},
     );
+    if (response.data is! Map) {
+      throw Exception('AI could not check the pictures. Try again.');
+    }
     final body = Map<String, dynamic>.from(response.data as Map);
-    if (body['error'] != null) throw Exception(body['error']);
+    if (body['error'] != null) {
+      throw Exception('AI could not check the pictures. Try again.');
+    }
     return Mission.fromJson(Map<String, dynamic>.from(body['quest'] as Map));
   }
 
@@ -350,27 +369,13 @@ class MissionService {
 
       final welcomeMission = await createMission(
         userId: newUserId,
-        title: 'Welcome Mission: Tie Your Shoes! 👟',
-        description: '''Welcome to the app, Agent! 🎉
+        title: 'Your First Task: Tie Your Shoes',
+        description: '''Welcome to ScreenGate!
 
-Here's how this works: You'll receive missions from friends, your coach, or create your own. Social missions are how we keep each other accountable – friends can assign you tasks and you can challenge them right back!
+Your task is to tie your shoes.
 
-This is your FIRST example mission. Your objective: Tie your shoes and prove you can complete a mission.
-
-But wait... to take the "before" photo, you'll need to untie ONE of your shoes first. I know, I know – the sacrifices we make for accountability! 😂
-
-Go ahead, loosen those laces, snap a "before" photo of your untied shoe, then work your magic and tie it back up for the "after" shot.
-
-Let's see what you've got, Agent!''',
-        completedState:
-            '''Your "after" photo should show a BEAUTIFULLY tied shoe – we're talking a proper knot, not that bunny-ears-gone-wrong situation.
-
-Your coach will analyze both photos to verify:
-✅ The "before" shows an untied shoe (yes, we can tell if you faked it!)
-✅ The "after" shows the same shoe, now properly tied
-✅ Bonus points for style – double knots, fancy loops, or just pure functional excellence
-
-Once verified, you'll earn your first stars and be ready for real missions!''',
+Take a before picture. Tie your shoes. Then take an after picture.''',
+        completedState: 'The after picture shows a tied shoe.',
         type: MissionType.friendAssigned,
         assignedByUserId: adminUserId,
         assignedToUserId: newUserId,

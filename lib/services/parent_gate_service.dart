@@ -45,7 +45,7 @@ Future<bool> requireParentPassword(
     void Function(void Function()) setDialogState,
   ) async {
     if (controller.text.isEmpty) {
-      setDialogState(() => errorText = 'Enter the parent password.');
+      setDialogState(() => errorText = 'Enter the ScreenGate password.');
       return;
     }
     setDialogState(() {
@@ -72,12 +72,12 @@ Future<bool> requireParentPassword(
     barrierDismissible: false,
     builder: (dialogContext) => StatefulBuilder(
       builder: (context, setDialogState) => AlertDialog(
-        title: const Text('Parent check'),
+        title: const Text('Password check'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Enter the parent password to $action.'),
+            Text('Enter the ScreenGate password to $action.'),
             const SizedBox(height: 16),
             TextField(
               controller: controller,
@@ -86,7 +86,7 @@ Future<bool> requireParentPassword(
               enabled: !checking,
               textInputAction: TextInputAction.done,
               decoration: InputDecoration(
-                labelText: 'Parent password',
+                labelText: 'Password',
                 errorText: errorText.isEmpty ? null : errorText,
               ),
               onSubmitted: checking

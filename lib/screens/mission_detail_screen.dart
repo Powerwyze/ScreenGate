@@ -12,6 +12,7 @@ import 'package:screengate/models/mission.dart';
 import 'package:screengate/models/user.dart';
 import 'package:screengate/theme.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 // Removed heavy image manipulation; reusing reliable avatar upload pipeline
 
 enum _PickSource { camera, gallery }
@@ -240,7 +241,8 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not send the quest: $e')),
+          const SnackBar(
+              content: Text('We could not send the task. Try again.')),
         );
       }
     } finally {
@@ -260,19 +262,88 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content:
-                  Text('Quest reset. Add a new after photo to try again.')),
+          const SnackBar(content: Text('Task reset. Add a new after picture.')),
         );
       }
     } catch (e) {
       debugPrint('[MissionDetail] Redo mission error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error resetting mission: $e')),
+          const SnackBar(content: Text('We could not reset the task.')),
         );
       }
     }
+  }
+
+  Future<void> _editTask() async {
+    final provider = context.read<AppProvider>();
+    final title = TextEditingController(text: _mission.title);
+    final details = TextEditingController(text: _mission.description);
+    final save = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit task'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+                controller: title,
+                decoration: const InputDecoration(labelText: 'Task name')),
+            const SizedBox(height: 12),
+            TextField(
+                controller: details,
+                maxLines: 3,
+                decoration:
+                    const InputDecoration(labelText: 'What should they do?')),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('CANCEL')),
+          FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('SAVE')),
+        ],
+      ),
+    );
+    if (save == true &&
+        title.text.trim().isNotEmpty &&
+        details.text.trim().isNotEmpty) {
+      final updated = _mission.copyWith(
+        title: title.text.trim(),
+        description: details.text.trim(),
+        completedState: details.text.trim(),
+      );
+      await provider.missionService.updateMission(updated);
+      await provider.updateMission(updated);
+      if (mounted) setState(() => _mission = updated);
+    }
+    title.dispose();
+    details.dispose();
+  }
+
+  Future<void> _removeTask() async {
+    final provider = context.read<AppProvider>();
+    final remove = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove this task?'),
+        content: const Text('This task will go away for everyone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('KEEP IT')),
+          FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('REMOVE')),
+        ],
+      ),
+    );
+    if (remove != true || !mounted) return;
+    await provider.missionService.deleteMission(_mission.id);
+    await provider.loadMissions();
+    if (mounted) context.pop();
   }
 
   @override
@@ -282,12 +353,24 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
     final isParent = currentUser.accountRole == AccountRole.parent;
     final isSelfAssigned =
         _mission.userId == currentUser.id && _mission.assignedToUserId == null;
-    final canAddBefore = isParent;
+    final canAddBefore = isParent || _mission.beforePhotoUrl == null;
     final canAddAfter = !isParent || isSelfAssigned;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quest Details'),
+        title: const Text('Task'),
+        actions: isParent
+            ? [
+                IconButton(
+                    onPressed: _editTask,
+                    icon: const Icon(Icons.edit_rounded),
+                    tooltip: 'Edit task'),
+                IconButton(
+                    onPressed: _removeTask,
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    tooltip: 'Remove task'),
+              ]
+            : null,
       ),
       body: SingleChildScrollView(
         padding: AppSpacing.paddingLg,
@@ -311,9 +394,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            _buildSection('Description', _mission.description),
-            const SizedBox(height: 16),
-            _buildSection('Completed State', _mission.completedState),
+            _buildSection('What to do', _mission.description),
             if (_mission.deadline != null) ...[
               const SizedBox(height: 16),
               _buildInfoRow(
@@ -322,15 +403,16 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                 DateFormat('MMM dd, yyyy').format(_mission.deadline!),
               ),
             ],
-            _buildInfoRow(Icons.category, 'Type', _mission.type.name),
+            _buildInfoRow(Icons.timer_outlined, 'Play time',
+                '${_mission.rewardMinutes} minutes'),
             const SizedBox(height: 24),
-            Text('Photo Evidence', style: context.textStyles.titleLarge!.bold),
+            Text('Pictures', style: context.textStyles.titleLarge!.bold),
             const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
                   child: _buildPhotoCard(
-                    'Before Photo',
+                    'Before',
                     _mission.beforePhotoUrl,
                     canAddBefore ? () => _addPhoto(true) : null,
                     Icons.photo_camera,
@@ -339,7 +421,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildPhotoCard(
-                    'After Photo',
+                    'After',
                     _mission.afterPhotoUrl,
                     canAddAfter && _mission.beforePhotoUrl != null
                         ? () => _addPhoto(false)
@@ -359,7 +441,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                       width: 18,
                       child: CircularProgressIndicator(strokeWidth: 2)),
                   SizedBox(width: 8),
-                  Text('Uploading photo...')
+                  Text('Saving picture...')
                 ],
               ),
             ],
@@ -439,7 +521,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                           }
                         },
                   icon: const Icon(Icons.check_circle_rounded),
-                  label: const Text('APPROVE QUEST'),
+                  label: const Text('APPROVE TASK'),
                 ),
               ),
             ],
@@ -449,7 +531,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                 onPressed: _redoMission,
                 icon: Icon(Icons.refresh,
                     color: Theme.of(context).colorScheme.primary),
-                label: const Text('Try Quest Again'),
+                label: const Text('TRY TASK AGAIN'),
               ),
             ],
           ],

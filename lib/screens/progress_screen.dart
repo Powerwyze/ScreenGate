@@ -128,7 +128,7 @@ class ProgressScreen extends StatelessWidget {
                     final achievements = snapshot.data!.take(6).toList();
                     if (achievements.isEmpty) {
                       return Text(
-                        'No achievements yet. Keep completing missions!',
+                        'No stars yet. Keep finishing tasks!',
                         style: context.textStyles.bodyMedium!
                             .withColor(CyberpunkColors.textSecondary),
                       );
@@ -292,7 +292,7 @@ class _MissionSummary extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Missions', style: context.textStyles.titleLarge!.bold),
+            Text('Tasks', style: context.textStyles.titleLarge!.bold),
             Text('Total ${active + completed + failed}',
                 style: context.textStyles.labelMedium!
                     .withColor(CyberpunkColors.textSecondary)),

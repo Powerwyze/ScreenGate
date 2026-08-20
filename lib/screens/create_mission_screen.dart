@@ -6,6 +6,8 @@ import 'package:screengate/models/mission.dart';
 import 'package:screengate/models/user.dart';
 import 'package:screengate/theme.dart';
 import 'package:screengate/services/family_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:screengate/services/image_upload_service.dart';
 
 class CreateMissionScreen extends StatefulWidget {
   const CreateMissionScreen({super.key, this.assignee});
@@ -21,7 +23,9 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _completedStateController = TextEditingController();
+  final _imagePicker = ImagePicker();
+  XFile? _beforePhoto;
+  bool _saving = false;
   DateTime? _deadline;
   MissionType _type = MissionType.selfAssigned;
   User? _assignee;
@@ -60,7 +64,6 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
-    _completedStateController.dispose();
     super.dispose();
   }
 
@@ -87,12 +90,13 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
     final isAssignment = targetUserId != user.id;
     final missionType = isAssignment ? MissionType.friendAssigned : _type;
 
+    setState(() => _saving = true);
     try {
       final mission = await provider.missionService.createMission(
         userId: targetUserId,
         title: _titleController.text,
         description: _descriptionController.text,
-        completedState: _completedStateController.text,
+        completedState: _descriptionController.text.trim(),
         type: missionType,
         deadline: _deadline,
         assignedByUserId: isAssignment ? user.id : null,
@@ -102,6 +106,19 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
         minimumPassingRating: _minimumRating,
       );
 
+      if (_beforePhoto != null) {
+        final url = await ImageUploadService.instance.uploadMissionPhoto(
+          missionId: mission.id,
+          isBefore: true,
+          bytes: await _beforePhoto!.readAsBytes(),
+        );
+        await provider.missionService.setMissionPhoto(
+          missionId: mission.id,
+          photoUrl: url,
+          isBefore: true,
+        );
+      }
+
       if (mission.userId == user.id) {
         await provider.addMission(mission);
       }
@@ -110,18 +127,23 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              isAssignment ? 'Quest sent' : 'Quest created',
+              isAssignment ? 'Task sent!' : 'Task made!',
             ),
           ),
         );
-        context.pop();
+        await provider.loadMissions();
+        provider.setCurrentTab(1);
+        if (mounted) context.go('/home');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating mission: $e')),
+          const SnackBar(
+              content: Text('We could not make the task. Try again.')),
         );
       }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -129,7 +151,7 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Quest'),
+        title: const Text('New Task'),
       ),
       body: SingleChildScrollView(
         padding: AppSpacing.paddingLg,
@@ -146,7 +168,7 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                   DropdownButtonFormField<String>(
                     initialValue: _selectedUserId,
                     decoration: const InputDecoration(
-                      labelText: 'Who is this quest for?',
+                      labelText: 'Who will do this task?',
                       prefixIcon: Icon(Icons.person_rounded),
                     ),
                     items: [
@@ -165,8 +187,8 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(
-                  labelText: 'What needs to be done?',
-                  hintText: 'e.g., Clean the garage',
+                  labelText: 'Task name',
+                  hintText: 'Clean your room',
                   prefixIcon: const Icon(Icons.title),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md)),
@@ -178,8 +200,8 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
               TextFormField(
                 controller: _descriptionController,
                 decoration: InputDecoration(
-                  labelText: 'Description',
-                  hintText: 'What needs to be done?',
+                  labelText: 'What should they do?',
+                  hintText: 'Put toys away and make the bed.',
                   prefixIcon: const Icon(Icons.description),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md)),
@@ -189,18 +211,23 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                     value?.isEmpty ?? true ? 'Required' : null,
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _completedStateController,
-                decoration: InputDecoration(
-                  labelText: 'Completed State',
-                  hintText: 'How will you know it\'s done?',
-                  prefixIcon: const Icon(Icons.check_circle),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md)),
-                ),
-                maxLines: 2,
-                validator: (value) =>
-                    value?.isEmpty ?? true ? 'Required' : null,
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final picked = await _imagePicker.pickImage(
+                    source: ImageSource.gallery,
+                    maxWidth: 1600,
+                    imageQuality: 85,
+                  );
+                  if (picked != null && mounted) {
+                    setState(() => _beforePhoto = picked);
+                  }
+                },
+                icon: Icon(_beforePhoto == null
+                    ? Icons.add_a_photo_rounded
+                    : Icons.check_circle_rounded),
+                label: Text(_beforePhoto == null
+                    ? 'Add a before picture (optional)'
+                    : 'Before picture added'),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
@@ -224,12 +251,12 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                   ButtonSegment(
                     value: MissionApprovalMode.manual,
                     icon: Icon(Icons.touch_app_rounded),
-                    label: Text('I approve'),
+                    label: Text('I will approve'),
                   ),
                   ButtonSegment(
                     value: MissionApprovalMode.ai,
                     icon: Icon(Icons.auto_awesome_rounded),
-                    label: Text('AI grades'),
+                    label: Text('AI will approve'),
                   ),
                 ],
                 selected: {_approvalMode},
@@ -241,7 +268,7 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                 DropdownButtonFormField<double>(
                   initialValue: _minimumRating,
                   decoration: const InputDecoration(
-                    labelText: 'Stars needed to pass',
+                    labelText: 'Stars needed to finish',
                     prefixIcon: Icon(Icons.star_rounded),
                   ),
                   items: [3.0, 3.5, 4.0, 4.5, 5.0]
@@ -262,7 +289,7 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                       borderRadius: BorderRadius.circular(AppRadius.md)),
                   leading: const Icon(Icons.person_add_alt),
                   title: Text('Assigning to ${_assignee!.codename}'),
-                  subtitle: Text('They will receive this mission'),
+                  subtitle: Text('They will get this task'),
                 ),
                 const SizedBox(height: 16),
               ],
@@ -270,24 +297,24 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                 onTap: _selectDeadline,
                 child: InputDecorator(
                   decoration: InputDecoration(
-                    labelText: 'Deadline (Optional)',
+                    labelText: 'Due date (optional)',
                     prefixIcon: const Icon(Icons.calendar_today),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.md)),
                   ),
                   child: Text(
                     _deadline == null
-                        ? 'Select deadline'
+                        ? 'Pick a due date'
                         : '${_deadline!.month}/${_deadline!.day}/${_deadline!.year}',
                   ),
                 ),
               ),
               const SizedBox(height: 24),
               FilledButton(
-                onPressed: _createMission,
+                onPressed: _saving ? null : _createMission,
                 child: const Padding(
                   padding: AppSpacing.paddingMd,
-                  child: Text('Create Quest'),
+                  child: Text('MAKE TASK'),
                 ),
               ),
             ],

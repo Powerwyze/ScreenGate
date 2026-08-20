@@ -145,7 +145,7 @@ class _MyAppState extends State<MyApp> {
                   return const Scaffold(
                     body: Center(
                         child: Text(
-                            'Quest details unavailable. Please reopen it from Quests.')),
+                            'This task could not open. Please try again.')),
                   );
                 }
 
@@ -254,7 +254,7 @@ class GlobalBottomNavBar extends StatelessWidget {
         final destinations = isParent
             ? const [
                 (Icons.home_rounded, 'Home'),
-                (Icons.checklist_rounded, 'Quests'),
+                (Icons.checklist_rounded, 'Tasks'),
                 (Icons.family_restroom_rounded, 'Family'),
                 (Icons.settings_rounded, 'Settings'),
               ]
@@ -334,7 +334,7 @@ class AppBottomNavigation extends StatelessWidget {
         NavigationDestination(
           icon: Icon(Icons.add_circle_outline),
           selectedIcon: Icon(Icons.add_circle),
-          label: 'New Mission',
+          label: 'New Task',
         ),
         NavigationDestination(
           icon: Icon(Icons.notifications_outlined),

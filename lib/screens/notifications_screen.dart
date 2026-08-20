@@ -154,8 +154,7 @@ Future<void> _handleNotificationTap(
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content:
-                  Text('Mission not found')), // mission was deleted or missing
+              content: Text('Task not found')), // task was deleted or missing
         );
       }
       break;
