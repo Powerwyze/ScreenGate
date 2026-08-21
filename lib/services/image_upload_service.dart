@@ -103,6 +103,20 @@ class ImageUploadService {
     }
   }
 
+  Future<String> uploadChildAvatar({
+    required String childUserId,
+    required Uint8List bytes,
+  }) async {
+    final parentId = SupabaseConfig.auth.currentUser?.id;
+    if (parentId == null) throw StateError('Sign in before adding a photo.');
+    final fullPath = '$parentId/children/$childUserId/avatar.jpg';
+    final uploadBytes = await compute(_prepareMissionPhoto, bytes);
+    await _uploadWithRetry(fullPath, uploadBytes);
+    return SupabaseConfig.client.storage
+        .from('user-uploads')
+        .getPublicUrl('$fullPath?v=${DateTime.now().millisecondsSinceEpoch}');
+  }
+
   Future<void> deleteImage(String imageUrl) async {
     try {
       final uri = Uri.parse(imageUrl);

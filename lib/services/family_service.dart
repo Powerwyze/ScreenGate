@@ -21,12 +21,14 @@ class RememberedChild {
 class FamilyChild {
   final String id;
   final String name;
+  final String? avatarUrl;
   final bool hasPassword;
   final List<ScreenGateDevice> devices;
 
   const FamilyChild({
     required this.id,
     required this.name,
+    this.avatarUrl,
     required this.hasPassword,
     required this.devices,
   });
@@ -110,7 +112,7 @@ class FamilyService {
     final memberships = await SupabaseConfig.client
         .from('family_members')
         .select(
-            'user_id, users!family_members_user_id_fkey(codename, child_password_set_at)')
+            'user_id, users!family_members_user_id_fkey(codename, avatar_url, child_password_set_at)')
         .eq('role', 'child')
         .eq('status', 'active');
 
@@ -132,6 +134,7 @@ class FamilyService {
       children.add(FamilyChild(
         id: userId,
         name: user['codename'] as String? ?? 'Child',
+        avatarUrl: user['avatar_url'] as String?,
         hasPassword: user['child_password_set_at'] != null,
         devices: devices,
       ));
@@ -261,5 +264,18 @@ class FamilyService {
     );
     final data = Map<String, dynamic>.from(response.data as Map);
     if (data['error'] != null) throw Exception(data['error']);
+  }
+
+  Future<void> setChildPhoto({
+    required String childUserId,
+    required String photoUrl,
+  }) async {
+    await SupabaseConfig.client.rpc(
+      'set_child_profile_photo',
+      params: {
+        'p_child_user_id': childUserId,
+        'p_avatar_url': photoUrl,
+      },
+    );
   }
 }

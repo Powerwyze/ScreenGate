@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:screengate/models/mission.dart';
 import 'package:screengate/models/user.dart';
 import 'package:screengate/providers/app_provider.dart';
 import 'package:screengate/services/family_service.dart';
+import 'package:screengate/services/image_upload_service.dart';
 import 'package:screengate/services/parent_gate_service.dart';
 import 'package:screengate/services/screen_time_service.dart';
 
@@ -367,6 +369,43 @@ class _FamilyScreen extends StatefulWidget {
 
 class _FamilyScreenState extends State<_FamilyScreen> {
   late Future<List<FamilyChild>> _children = FamilyService().getChildren();
+  final _imagePicker = ImagePicker();
+  String? _uploadingChildId;
+
+  Future<void> _addChildPhoto(FamilyChild child) async {
+    final photo = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      imageQuality: 85,
+    );
+    if (photo == null || !mounted) return;
+    setState(() => _uploadingChildId = child.id);
+    try {
+      final url = await ImageUploadService.instance.uploadChildAvatar(
+        childUserId: child.id,
+        bytes: await photo.readAsBytes(),
+      );
+      await FamilyService().setChildPhoto(
+        childUserId: child.id,
+        photoUrl: url,
+      );
+      if (!mounted) return;
+      setState(() {
+        _children = FamilyService().getChildren();
+        _uploadingChildId = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${child.name}’s photo is ready.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _uploadingChildId = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not add the photo. $error')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -390,8 +429,16 @@ class _FamilyScreenState extends State<_FamilyScreen> {
             }
             return Column(
               children: children.expand((child) {
+                final profile = _ChildProfileRow(
+                  child: child,
+                  isUploading: _uploadingChildId == child.id,
+                  onPhoto: () => _addChildPhoto(child),
+                  onPassword: () => _showChildPasswordDialog(context, child),
+                );
                 if (child.devices.isEmpty) {
                   return [
+                    profile,
+                    const SizedBox(height: 8),
                     _AttentionRow(
                       icon: Icons.phone_iphone_rounded,
                       color: _coral,
@@ -399,25 +446,26 @@ class _FamilyScreenState extends State<_FamilyScreen> {
                       subtitle: child.hasPassword
                           ? 'Login password ready'
                           : 'Password required',
-                      actionIcon: Icons.key_rounded,
-                      onAction: () => _showChildPasswordDialog(context, child),
                     )
                   ];
                 }
-                return child.devices.map((device) => _AttentionRow(
-                      icon: device.platform == 'android'
-                          ? Icons.android_rounded
-                          : Icons.phone_iphone_rounded,
-                      color: device.screenTimeAuthorized ? _teal : _coral,
-                      title: '${child.name} · ${device.name}',
-                      subtitle: !child.hasPassword
-                          ? 'Password required'
-                          : device.screenTimeAuthorized
-                              ? 'Screen time ready'
-                              : 'Needs screen time setup',
-                      actionIcon: Icons.key_rounded,
-                      onAction: () => _showChildPasswordDialog(context, child),
-                    ));
+                return [
+                  profile,
+                  const SizedBox(height: 8),
+                  ...child.devices.map((device) => _AttentionRow(
+                        icon: device.platform == 'android'
+                            ? Icons.android_rounded
+                            : Icons.phone_iphone_rounded,
+                        color: device.screenTimeAuthorized ? _teal : _coral,
+                        title: '${child.name} · ${device.name}',
+                        subtitle: !child.hasPassword
+                            ? 'Password required'
+                            : device.screenTimeAuthorized
+                                ? 'Screen time ready'
+                                : 'Needs screen time setup',
+                      )),
+                  const SizedBox(height: 12)
+                ];
               }).toList(),
             );
           },
@@ -439,6 +487,67 @@ class _FamilyScreenState extends State<_FamilyScreen> {
       ],
     );
   }
+}
+
+class _ChildProfileRow extends StatelessWidget {
+  final FamilyChild child;
+  final bool isUploading;
+  final VoidCallback onPhoto;
+  final VoidCallback onPassword;
+
+  const _ChildProfileRow({
+    required this.child,
+    required this.isUploading,
+    required this.onPhoto,
+    required this.onPassword,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _mint,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 27,
+              backgroundColor: Colors.white,
+              backgroundImage: child.avatarUrl == null
+                  ? null
+                  : NetworkImage(child.avatarUrl!),
+              child: child.avatarUrl == null
+                  ? Text(child.name.characters.first.toUpperCase(),
+                      style: const TextStyle(
+                          color: _ink, fontWeight: FontWeight.w800))
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(child.name,
+                  style: const TextStyle(
+                      color: _ink, fontSize: 17, fontWeight: FontWeight.w800)),
+            ),
+            if (isUploading)
+              const SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 3))
+            else
+              IconButton(
+                tooltip: 'Add child photo',
+                onPressed: onPhoto,
+                icon: const Icon(Icons.add_a_photo_rounded),
+              ),
+            IconButton(
+              tooltip: 'Child login password',
+              onPressed: onPassword,
+              icon: const Icon(Icons.key_rounded),
+            ),
+          ],
+        ),
+      );
 }
 
 class _RewardsScreen extends StatelessWidget {
@@ -773,15 +882,11 @@ class _AttentionRow extends StatelessWidget {
   final Color color;
   final String title;
   final String subtitle;
-  final IconData? actionIcon;
-  final VoidCallback? onAction;
   const _AttentionRow(
       {required this.icon,
       required this.color,
       required this.title,
-      required this.subtitle,
-      this.actionIcon,
-      this.onAction});
+      required this.subtitle});
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(16),
@@ -804,12 +909,6 @@ class _AttentionRow extends StatelessWidget {
                     style: const TextStyle(
                         color: Color(0xFF667684), fontSize: 13)),
               ])),
-          if (onAction != null)
-            IconButton(
-              tooltip: 'Child login password',
-              onPressed: onAction,
-              icon: Icon(actionIcon),
-            ),
         ]),
       );
 }
@@ -973,6 +1072,8 @@ class _QuestRow extends StatelessWidget {
                 final matches = (snapshot.data ?? const <FamilyChild>[])
                     .where((child) => child.id == mission.userId);
                 final name = matches.isEmpty ? 'Me' : matches.first.name;
+                final avatarUrl =
+                    matches.isEmpty ? null : matches.first.avatarUrl;
                 final colors = [
                   _mint,
                   const Color(0xFFFFE5DF),
@@ -986,9 +1087,13 @@ class _QuestRow extends StatelessWidget {
                   child: CircleAvatar(
                     radius: 22,
                     backgroundColor: colors[index],
+                    backgroundImage:
+                        avatarUrl == null ? null : NetworkImage(avatarUrl),
                     foregroundColor: _ink,
-                    child: Text(name.characters.first.toUpperCase(),
-                        style: const TextStyle(fontWeight: FontWeight.w800)),
+                    child: avatarUrl == null
+                        ? Text(name.characters.first.toUpperCase(),
+                            style: const TextStyle(fontWeight: FontWeight.w800))
+                        : null,
                   ),
                 );
               },
