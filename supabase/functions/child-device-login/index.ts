@@ -6,13 +6,17 @@ const cors = {
 };
 
 Deno.serve(async (request) => {
-  if (request.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (request.method === "OPTIONS") {
+    return new Response("ok", { headers: cors });
+  }
 
   try {
-    const { installationId, username, password } = await request.json();
+    const { installationId, username, password, childUserId } = await request
+      .json();
     const deviceId = String(installationId ?? "").trim();
     const childUsername = String(username ?? "").trim();
     const childPassword = String(password ?? "");
+    const rememberedChildId = String(childUserId ?? "").trim();
     if (
       deviceId.length < 8 || childUsername.length < 1 ||
       childPassword.length < 6
@@ -33,7 +37,41 @@ Deno.serve(async (request) => {
       .eq("device_role", "child")
       .maybeSingle();
     if (deviceError) throw deviceError;
-    if (!device) throw new Error("This phone needs to be paired once");
+    if (!device) {
+      if (!/^[0-9a-f-]{36}$/i.test(rememberedChildId)) {
+        throw new Error("This phone needs to be paired once");
+      }
+      const { data: profile, error: profileError } = await admin
+        .from("users")
+        .select("id, codename")
+        .eq("id", rememberedChildId)
+        .eq("account_role", "child")
+        .maybeSingle();
+      if (profileError) throw profileError;
+      if (
+        !profile || String(profile.codename).trim().toLocaleLowerCase() !==
+          childUsername.toLocaleLowerCase()
+      ) {
+        throw new Error("That name or password did not work");
+      }
+      const rememberedAuth = createClient(url, anonKey);
+      const { data: rememberedSignIn, error: rememberedSignInError } =
+        await rememberedAuth.auth.signInWithPassword({
+          email: `child-${rememberedChildId}@questime.local`,
+          password: childPassword,
+        });
+      if (rememberedSignInError || !rememberedSignIn.session) {
+        throw new Error("That password did not work");
+      }
+      return Response.json(
+        {
+          childUserId: rememberedChildId,
+          childName: profile.codename,
+          refreshToken: rememberedSignIn.session.refresh_token,
+        },
+        { headers: cors },
+      );
+    }
 
     const { data: memberships, error: membershipError } = await admin
       .from("family_members")

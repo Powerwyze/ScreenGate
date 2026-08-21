@@ -197,7 +197,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(24),
               child: Image.asset(
-                'assets/images/ChatGPT_Image_Dec_2_2025_06_29_00_PM.png',
+                'assets/images/screengate_logo.png',
                 width: 120,
                 height: 120,
                 fit: BoxFit.cover,

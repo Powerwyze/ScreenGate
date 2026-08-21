@@ -1,7 +1,7 @@
 name: screengate
 description: "ScreenGate turns time into quests with AI verification, personalized Handler coaching, and social accountability."
 publish_to: "none"
-version: 1.7.1+15
+version: 1.7.2+16
 
 environment:
   sdk: ^3.6.0
@@ -41,8 +41,8 @@ flutter_launcher_icons:
   ios: true
   web:
     generate: true
-    image_path: assets/images/ChatGPT_Image_Dec_2_2025_06_29_00_PM.png
-  image_path: assets/images/ChatGPT_Image_Dec_2_2025_06_29_00_PM.png
+    image_path: assets/images/screengate_logo.png
+  image_path: assets/images/screengate_logo.png
   remove_alpha_ios: true
   adaptive_icon_background: "#4A7FA3"
-  adaptive_icon_foreground: assets/images/ChatGPT_Image_Dec_2_2025_06_29_00_PM.png
+  adaptive_icon_foreground: assets/images/screengate_logo.png

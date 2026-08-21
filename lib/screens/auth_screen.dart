@@ -123,12 +123,16 @@ class _AuthScreenState extends State<AuthScreen> {
         );
       }
       await provider.reloadProfile();
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
+        final message = error
+            .toString()
+            .replaceFirst('Exception: ', '')
+            .replaceFirst('FunctionException(status: 400, details: ', '')
+            .split(', reasonPhrase:')
+            .first;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('That password did not work. Ask your parent.'),
-          ),
+          SnackBar(content: Text(message)),
         );
       }
     } finally {
@@ -201,7 +205,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: Image.asset(
-                  'assets/images/ChatGPT_Image_Dec_2_2025_06_29_00_PM.png',
+                  'assets/images/screengate_logo.png',
                   width: 100,
                   height: 100,
                   fit: BoxFit.cover,
@@ -441,7 +445,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   label: Text(_isLoading
                       ? 'CONNECTING...'
                       : usePassword
-                          ? 'OPEN MY QUESTS'
+                          ? 'OPEN MY TASKS'
                           : 'JOIN MY FAMILY'),
                 ),
               ),
@@ -498,7 +502,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(20),
                     child: Image.asset(
-                      'assets/images/ChatGPT_Image_Dec_2_2025_06_29_00_PM.png',
+                      'assets/images/screengate_logo.png',
                       width: 96,
                       height: 96,
                       fit: BoxFit.cover,

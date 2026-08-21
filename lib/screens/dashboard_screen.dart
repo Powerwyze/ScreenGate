@@ -393,7 +393,7 @@ class _CyberpunkHeader extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: Image.asset(
-            'assets/images/ChatGPT_Image_Dec_2_2025_06_29_00_PM.png',
+            'assets/images/screengate_logo.png',
             width: 44,
             height: 44,
             fit: BoxFit.cover,

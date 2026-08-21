@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:screengate/services/screen_time_service.dart';
 import 'package:screengate/supabase/supabase_config.dart';
 
 class RememberedChild {
@@ -171,6 +172,7 @@ class FamilyService {
         },
       );
       final data = Map<String, dynamic>.from(result as Map);
+      await ScreenTimeService().registerCurrentDevice(role: 'child');
       await rememberChild(RememberedChild(
         id: data['child_user_id'] as String,
         name: childName.trim(),
@@ -221,12 +223,17 @@ class FamilyService {
     required RememberedChild child,
     required String password,
   }) async {
-    await signInPairedDevice(username: child.name, password: password);
+    await signInPairedDevice(
+      username: child.name,
+      password: password,
+      childUserId: child.id,
+    );
   }
 
   Future<void> signInPairedDevice({
     required String username,
     required String password,
+    String? childUserId,
   }) async {
     final preferences = await SharedPreferences.getInstance();
     final installationId =
@@ -240,6 +247,7 @@ class FamilyService {
         'installationId': installationId,
         'username': username.trim(),
         'password': password,
+        if (childUserId != null) 'childUserId': childUserId,
       },
     );
     final data = Map<String, dynamic>.from(response.data as Map);
