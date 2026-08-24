@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:screengate/widgets/solo_tutorial.dart';
 import 'package:provider/provider.dart';
 import 'package:screengate/providers/app_provider.dart';
 import 'package:screengate/models/handler.dart';
@@ -31,6 +33,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _lifeGoalsController.dispose();
     super.dispose();
   }
+
+  Future<void> _selectSoloMode() async {
+    setState(() {
+      _accountRole = AccountRole.parent;
+      _usageMode = UsageMode.solo;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted || prefs.getBool('solo_tutorial_seen') == true) return;
+    await prefs.setBool('solo_tutorial_seen', true);
+    if (mounted) await showSoloTutorial(context, firstRun: true);
+  }
+
+  Future<void> _openSoloHelper() => showSoloHelper(context);
 
   void _nextPage() {
     if (_accountRole == null || _codenameController.text.trim().isEmpty) {
@@ -134,6 +149,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Get started'),
+        actions: [
+          IconButton(
+              onPressed: _openSoloHelper,
+              icon: const Icon(Icons.help_outline_rounded)),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -272,10 +295,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Semantics(
             button: true,
             child: InkWell(
-              onTap: () => setState(() {
-                _accountRole = AccountRole.parent;
-                _usageMode = UsageMode.solo;
-              }),
+              onTap: _selectSoloMode,
               borderRadius: BorderRadius.circular(AppRadius.md),
               child: Container(
                 width: double.infinity,

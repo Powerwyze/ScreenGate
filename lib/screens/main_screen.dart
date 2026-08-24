@@ -11,6 +11,7 @@ import 'package:screengate/services/family_service.dart';
 import 'package:screengate/services/image_upload_service.dart';
 import 'package:screengate/services/parent_gate_service.dart';
 import 'package:screengate/services/screen_time_service.dart';
+import 'package:screengate/widgets/solo_tutorial.dart';
 
 const _ink = Color(0xFF17324D);
 const _teal = Color(0xFF0B8F87);
@@ -870,7 +871,14 @@ class _Page extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (trailing != null) trailing!,
+                if (trailing != null)
+                  trailing!
+                else
+                  IconButton(
+                    onPressed: () => showSoloHelper(context),
+                    tooltip: 'Helper and tutorial',
+                    icon: const Icon(Icons.help_outline_rounded, color: _teal),
+                  ),
               ],
             ),
             const SizedBox(height: 28),

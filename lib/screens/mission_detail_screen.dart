@@ -169,7 +169,9 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
           '[MissionDetail] Firestore mission photo update complete. Refreshing mission...');
 
       var updated = saved;
-      if (!isBefore && updated.approvalMode == MissionApprovalMode.ai) {
+      if (!isBefore &&
+          (updated.approvalMode == MissionApprovalMode.ai ||
+              provider.currentUser?.usageMode == UsageMode.solo)) {
         updated = await provider.missionService.gradeQuest(_mission.id);
       }
       setState(() => _mission = updated);
@@ -179,7 +181,8 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
 
       if (!isBefore &&
           _mission.beforePhotoUrl != null &&
-          _mission.approvalMode == MissionApprovalMode.manual) {
+          _mission.approvalMode == MissionApprovalMode.manual &&
+          provider.currentUser?.usageMode != UsageMode.solo) {
         _showVerifyDialog();
       }
     } catch (e) {
@@ -358,6 +361,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
     final theme = Theme.of(context);
     final currentUser = context.read<AppProvider>().currentUser!;
     final isParent = currentUser.accountRole == AccountRole.parent;
+    final isSolo = currentUser.usageMode == UsageMode.solo;
     final isSelfAssigned =
         _mission.userId == currentUser.id && _mission.assignedToUserId == null;
     final canAddBefore = isParent || _mission.beforePhotoUrl == null;
@@ -502,7 +506,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('SEND TO PARENT'),
+                      : Text(isSolo ? 'CHECK WITH AI' : 'SEND TO PARENT'),
                 ),
               ),
             ],

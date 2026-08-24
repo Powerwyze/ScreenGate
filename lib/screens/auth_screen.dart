@@ -25,6 +25,23 @@ class _AuthScreenState extends State<AuthScreen> {
   RememberedChild? _selectedRememberedChild;
   bool _hasPairedInstallation = false;
 
+  void _showHelper() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ScreenGate helper'),
+        content: const Text(
+          'Choose Parent for family controls, Child to join with a family code, or Solo to work with AI as your only approver. You can reopen this help any time from the ? icon.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Got it')),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -193,6 +210,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     if (_deviceRole == null) return _buildPhoneChoice();
     if (_deviceRole == 'child') return _buildChildPhone();
+    if (_deviceRole == 'solo') return _buildSoloPhone();
 
     return Scaffold(
       body: Center(
@@ -303,6 +321,81 @@ class _AuthScreenState extends State<AuthScreen> {
                             color: const Color(0xFF8A9AA6),
                           ),
                     ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSoloPhone() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7FAF9),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF7FAF9),
+        elevation: 0,
+        actions: [
+          IconButton(
+              onPressed: _showHelper,
+              icon: const Icon(Icons.help_outline_rounded)),
+        ],
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
+          child: Column(
+            children: [
+              const Icon(Icons.person_rounded,
+                  size: 72, color: Color(0xFF0B8F87)),
+              const SizedBox(height: 18),
+              const Text('Solo Mode',
+                  style: TextStyle(
+                      color: Color(0xFF17324D),
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(height: 10),
+              const Text(
+                  'AI is your only approver. No family code or parent phone required.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Color(0xFF667684), fontSize: 17)),
+              const SizedBox(height: 32),
+              TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                      labelText: 'Email', border: OutlineInputBorder())),
+              const SizedBox(height: 16),
+              TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                      labelText: 'Password', border: OutlineInputBorder())),
+              const SizedBox(height: 22),
+              if (_isLoading)
+                const CircularProgressIndicator()
+              else
+                Column(
+                  children: [
+                    FilledButton(
+                        onPressed: _handleEmailAuth,
+                        style: FilledButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 50),
+                            backgroundColor: const Color(0xFF0B8F87),
+                            foregroundColor: Colors.white),
+                        child: Text(_isSignUp
+                            ? 'CREATE SOLO ACCOUNT'
+                            : 'SIGN IN TO SOLO')),
+                    TextButton(
+                        onPressed: () => setState(() => _isSignUp = !_isSignUp),
+                        child: Text(_isSignUp
+                            ? 'Already have an account? Sign In'
+                            : 'Don\'t have an account? Sign Up')),
+                    TextButton.icon(
+                        onPressed: () => setState(() => _deviceRole = null),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: const Text('Choose a different mode')),
                   ],
                 ),
             ],
@@ -491,6 +584,15 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildPhoneChoice() {
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF9),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF7FAF9),
+        elevation: 0,
+        actions: [
+          IconButton(
+              onPressed: _showHelper,
+              icon: const Icon(Icons.help_outline_rounded)),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -538,6 +640,14 @@ class _AuthScreenState extends State<AuthScreen> {
                     subtitle: 'Join with the family code',
                     color: const Color(0xFFFF7A66),
                     onTap: () => setState(() => _deviceRole = 'child'),
+                  ),
+                  const SizedBox(height: 16),
+                  _PhoneChoiceButton(
+                    icon: Icons.auto_awesome_rounded,
+                    title: 'Solo',
+                    subtitle: 'AI is the only approver',
+                    color: const Color(0xFF6C63FF),
+                    onTap: () => setState(() => _deviceRole = 'solo'),
                   ),
                 ],
               ),
