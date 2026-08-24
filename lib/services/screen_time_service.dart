@@ -112,26 +112,34 @@ class ScreenTimeService {
     );
   }
 
-  Future<bool> chooseIOSApps() async {
+  Future<bool> chooseIOSApps({bool soloMode = false}) async {
     if (!Platform.isIOS) return false;
-    return await _channel.invokeMethod<bool>('pickApps') ?? false;
+    return await _channel
+            .invokeMethod<bool>('pickApps', {'soloMode': soloMode}) ??
+        false;
   }
 
   Future<void> configureAndroid({
     Set<String>? packages,
     required int awardedMinutes,
+    bool soloMode = false,
   }) async {
     if (!Platform.isAndroid) return;
     await _channel.invokeMethod<void>('configure', {
       if (packages != null) 'packages': packages.toList(),
       'awardedMinutes': awardedMinutes,
+      'soloMode': soloMode,
     });
   }
 
-  Future<void> syncAllowance({required int awardedMinutes}) async {
+  Future<void> syncAllowance({
+    required int awardedMinutes,
+    bool soloMode = false,
+  }) async {
     if (!Platform.isIOS && !Platform.isAndroid) return;
     await _channel.invokeMethod<void>('configure', {
       'awardedMinutes': awardedMinutes,
+      'soloMode': soloMode,
     });
   }
 

@@ -21,20 +21,28 @@ class BlockedActivity : Activity() {
             setBackgroundColor(Color.rgb(247, 250, 249))
         }
         layout.addView(TextView(this).apply {
-            text = "Quest first!"
+            text = if (ScreenGateControlStore.isSoloMode(this@BlockedActivity)) {
+                "Focus first!"
+            } else {
+                "Quest first!"
+            }
             textSize = 34f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(23, 50, 77))
         }, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         layout.addView(TextView(this).apply {
-            text = "You are out of play time. Finish a quest and ask your parent to approve it."
+            text = if (ScreenGateControlStore.isSoloMode(this@BlockedActivity)) {
+                "You are out of today’s earned app time. Finish a task and let AI review it."
+            } else {
+                "You are out of play time. Finish a quest and ask your parent to approve it."
+            }
             textSize = 19f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(102, 118, 132))
             setPadding(0, padding, 0, padding)
         }, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         layout.addView(Button(this).apply {
-            text = "GO TO SCREENGATE"
+            text = "GO TO SCREEN GATE"
             setOnClickListener {
                 packageManager.getLaunchIntentForPackage(packageName)?.let(::startActivity)
                 finish()

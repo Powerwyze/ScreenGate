@@ -12,6 +12,7 @@ import 'package:screengate/services/image_upload_service.dart';
 import 'package:screengate/services/parent_gate_service.dart';
 import 'package:screengate/services/screen_time_service.dart';
 import 'package:screengate/widgets/solo_tutorial.dart';
+import 'package:screengate/screens/social_screen.dart';
 
 const _ink = Color(0xFF17324D);
 const _teal = Color(0xFF0B8F87);
@@ -43,6 +44,7 @@ class MainScreen extends StatelessWidget {
             ? const [
                 _SoloHome(),
                 _QuestList(isParent: true),
+                SocialScreen(),
                 _ProgressScreen(),
                 _SettingsScreen(),
               ]
@@ -130,9 +132,18 @@ class _SoloHome extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () => context.read<AppProvider>().setCurrentTab(3),
+            onPressed: () => context.read<AppProvider>().setCurrentTab(4),
             icon: const Icon(Icons.phonelink_lock_rounded),
             label: const Text('CHOOSE DISTRACTING APPS'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => context.push('/handler-chat'),
+            icon: const Icon(Icons.chat_bubble_outline_rounded),
+            label: const Text('TALK TO YOUR COACH'),
           ),
         ),
         if (openTasks.isNotEmpty) ...[
@@ -799,6 +810,35 @@ class _SettingsScreenState extends State<_SettingsScreen> {
           soloMode: isSolo,
         ),
         if (!isChild) ...[
+          if (isSolo) ...[
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => context.push('/handler-selection'),
+                icon: const Icon(Icons.auto_awesome_rounded),
+                label: const Text('CHANGE HANDLER'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => context.push('/profile'),
+                icon: const Icon(Icons.person_outline_rounded),
+                label: const Text('OPEN PROFILE'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => context.push('/notifications'),
+                icon: const Icon(Icons.notifications_none_rounded),
+                label: const Text('NOTIFICATIONS'),
+              ),
+            ),
+          ],
           const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
@@ -1304,17 +1344,19 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
   Future<void> _chooseApps() async {
     final user = context.read<AppProvider>().currentUser;
     if (user == null) return;
-    final unlocked = await requireParentPassword(
-      context,
-      email: user.email,
-      action: 'change blocked apps',
-    );
-    if (!unlocked || !mounted) return;
+    if (!widget.soloMode) {
+      final unlocked = await requireParentPassword(
+        context,
+        email: user.email,
+        action: 'change blocked apps',
+      );
+      if (!unlocked || !mounted) return;
+    }
 
     final device = await ScreenTimeService().status();
     if (device.platform == 'ios') {
       try {
-        await ScreenTimeService().chooseIOSApps();
+        await ScreenTimeService().chooseIOSApps(soloMode: widget.soloMode);
         await _loadConfiguration();
       } catch (_) {
         if (mounted) {
@@ -1382,6 +1424,8 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
       await ScreenTimeService().configureAndroid(
         packages: saved,
         awardedMinutes: context.read<AppProvider>().availableRewardMinutes,
+        soloMode: context.read<AppProvider>().currentUser?.usageMode ==
+            UsageMode.solo,
       );
       await _loadConfiguration();
     } catch (error) {

@@ -18,6 +18,7 @@ import 'package:screengate/supabase/supabase_config.dart';
 import 'package:screengate/screens/progress_screen.dart';
 import 'package:screengate/screens/leaderboard_screen.dart';
 import 'package:screengate/screens/direct_message_screen.dart';
+import 'package:screengate/screens/profile_screen.dart';
 import 'package:screengate/services/push_notification_service.dart';
 
 void main() async {
@@ -193,6 +194,10 @@ class _MyAppState extends State<MyApp> {
                 );
               },
             ),
+            GoRoute(
+              path: '/profile',
+              builder: (context, state) => const ProfileScreen(),
+            ),
           ],
         ),
       ],
@@ -256,6 +261,7 @@ class GlobalBottomNavBar extends StatelessWidget {
             ? const [
                 (Icons.center_focus_strong_rounded, 'Focus'),
                 (Icons.checklist_rounded, 'Tasks'),
+                (Icons.public_rounded, 'Social'),
                 (Icons.insights_rounded, 'Progress'),
                 (Icons.settings_rounded, 'Settings'),
               ]
@@ -276,7 +282,7 @@ class GlobalBottomNavBar extends StatelessWidget {
           height: 70,
           backgroundColor: Colors.white,
           indicatorColor: const Color(0xFFDDF4EE),
-          selectedIndex: provider.currentTab.clamp(0, 3),
+          selectedIndex: provider.currentTab.clamp(0, destinations.length - 1),
           onDestinationSelected: (index) {
             provider.setCurrentTab(index);
             context.go('/home');

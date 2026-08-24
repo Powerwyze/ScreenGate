@@ -11,8 +11,8 @@ This repository contains the ScreenGate Flutter app. The Dart package name is `s
 - Android application ID is prepared as `com.powerwyze.questime`.
 - iOS display metadata now uses ScreenGate branding.
 - The Flutter app no longer packages `.env` as an asset.
-- Gemini calls are routed through the Supabase `gemini-chat` Edge Function.
-- Gemini API keys belong in Supabase Edge Function secrets, never in the Flutter client.
+- AI calls are routed through the Supabase `ai-chat` Edge Function.
+- OpenAI API keys belong in Supabase Edge Function secrets, never in the Flutter client.
 - Push notifications are disabled by default until Firebase is registered for the final app IDs.
 
 ## Mobile Release Path
@@ -35,7 +35,8 @@ flutter build appbundle --release \
 Configure these in Supabase Edge Function secrets:
 
 ```text
-GEMINI_API_KEY=
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
 ALLOWED_ORIGIN=*
 MAX_REQUEST_BYTES=12000
 MAX_IMAGE_BYTES=5242880
@@ -58,4 +59,4 @@ GitHub Actions now verifies web, Android app bundle, and iOS no-codesign builds 
 
 ## Security Notes
 
-Revoke any Gemini key that was previously committed to repository history. Before production, add Supabase migrations for RLS and Storage policies so the backend security model is versioned with the app.
+Revoke any old provider key that was previously committed to repository history. Before production, add Supabase migrations for RLS and Storage policies so the backend security model is versioned with the app.

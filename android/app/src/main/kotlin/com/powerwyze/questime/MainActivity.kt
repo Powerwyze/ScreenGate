@@ -40,7 +40,8 @@ class MainActivity : FlutterActivity() {
                 "configure" -> {
                     val packages = call.argument<List<String>>("packages")?.toSet()
                     val awardedMinutes = call.argument<Int>("awardedMinutes") ?: 0
-                    ScreenGateControlStore.configure(this, packages, awardedMinutes)
+                    val soloMode = call.argument<Boolean>("soloMode") ?: false
+                    ScreenGateControlStore.configure(this, packages, awardedMinutes, soloMode)
                     result.success(null)
                 }
                 else -> result.notImplemented()

@@ -80,25 +80,37 @@ Return JSON only: {"rating": number, "feedback": string}. Rating must be 1 to 5 
     if (updateError) throw updateError;
 
     if (passed) {
-      const rewardUserId = quest.assigned_to_user_id ?? quest.user_id;
-      const { data: membership } = await admin.from("family_members")
-        .select("family_id").eq("user_id", rewardUserId)
-        .eq("status", "active").limit(1).maybeSingle();
-      if (membership) {
-        const reward = {
-          family_id: membership.family_id,
-          child_user_id: rewardUserId,
+      const { data: profile } = await admin.from("users").select("usage_mode")
+        .eq("id", quest.user_id).maybeSingle();
+      if (profile?.usage_mode === "solo") {
+        await admin.from("solo_reward_requests").upsert({
+          user_id: quest.user_id,
           mission_id: quest.id,
-          requested_minutes: Math.max(1, quest.reward_minutes),
+          requested_minutes: Math.max(1, Math.min(60, quest.reward_minutes)),
           status: "approved",
-          reviewed_at: new Date().toISOString(),
-        };
-        const { data: existing } = await admin.from("reward_requests")
-          .select("id").eq("mission_id", quest.id).maybeSingle();
-        if (existing) {
-          await admin.from("reward_requests").update(reward).eq("id", existing.id);
-        } else {
-          await admin.from("reward_requests").insert(reward);
+          created_at: new Date().toISOString(),
+        }, { onConflict: "mission_id" });
+      } else {
+        const rewardUserId = quest.assigned_to_user_id ?? quest.user_id;
+        const { data: membership } = await admin.from("family_members")
+          .select("family_id").eq("user_id", rewardUserId)
+          .eq("status", "active").limit(1).maybeSingle();
+        if (membership) {
+          const reward = {
+            family_id: membership.family_id,
+            child_user_id: rewardUserId,
+            mission_id: quest.id,
+            requested_minutes: Math.max(1, quest.reward_minutes),
+            status: "approved",
+            reviewed_at: new Date().toISOString(),
+          };
+          const { data: existing } = await admin.from("reward_requests")
+            .select("id").eq("mission_id", quest.id).maybeSingle();
+          if (existing) {
+            await admin.from("reward_requests").update(reward).eq("id", existing.id);
+          } else {
+            await admin.from("reward_requests").insert(reward);
+          }
         }
       }
     }

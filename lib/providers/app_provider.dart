@@ -276,7 +276,10 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
     if (_currentUser != null && !kIsWeb) {
       try {
         final screenTime = ScreenTimeService();
-        await screenTime.syncAllowance(awardedMinutes: awardedMinutes);
+        await screenTime.syncAllowance(
+          awardedMinutes: awardedMinutes,
+          soloMode: _currentUser!.usageMode == UsageMode.solo,
+        );
         final configuration = await screenTime.getConfiguration();
         _availableRewardSeconds = configuration.remainingSeconds;
         visibleMinutes = (configuration.remainingSeconds / 60).ceil();

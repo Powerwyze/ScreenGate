@@ -40,6 +40,9 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
   void initState() {
     super.initState();
     _assignee = widget.assignee;
+    if (context.read<AppProvider>().currentUser?.usageMode == UsageMode.solo) {
+      _approvalMode = MissionApprovalMode.ai;
+    }
     if (_assignee != null) {
       _type = MissionType.friendAssigned;
     }
@@ -52,7 +55,8 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
       if (!mounted) return;
       setState(() {
         _children = children;
-        _selectedUserId = context.read<AppProvider>().currentUser?.id;
+        _selectedUserId =
+            _assignee?.id ?? context.read<AppProvider>().currentUser?.id;
         _loadingChildren = false;
       });
     } catch (_) {
@@ -89,6 +93,9 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
     final targetUserId = _selectedUserId ?? _assignee?.id ?? user.id;
     final isAssignment = targetUserId != user.id;
     final missionType = isAssignment ? MissionType.friendAssigned : _type;
+    final approvalMode = user.usageMode == UsageMode.solo
+        ? MissionApprovalMode.ai
+        : _approvalMode;
 
     setState(() => _saving = true);
     try {
@@ -102,7 +109,7 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
         assignedByUserId: isAssignment ? user.id : null,
         assignedToUserId: isAssignment ? targetUserId : null,
         rewardMinutes: _rewardMinutes,
-        approvalMode: _approvalMode,
+        approvalMode: approvalMode,
         minimumPassingRating: _minimumRating,
       );
 
@@ -256,23 +263,31 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
                     setState(() => _rewardMinutes = value ?? 15),
               ),
               const SizedBox(height: 16),
-              SegmentedButton<MissionApprovalMode>(
-                segments: const [
-                  ButtonSegment(
-                    value: MissionApprovalMode.manual,
-                    icon: Icon(Icons.touch_app_rounded),
-                    label: Text('I will approve'),
-                  ),
-                  ButtonSegment(
-                    value: MissionApprovalMode.ai,
-                    icon: Icon(Icons.auto_awesome_rounded),
-                    label: Text('AI will approve'),
-                  ),
-                ],
-                selected: {_approvalMode},
-                onSelectionChanged: (value) =>
-                    setState(() => _approvalMode = value.first),
-              ),
+              if (context.read<AppProvider>().currentUser?.usageMode ==
+                  UsageMode.solo)
+                const ListTile(
+                  leading: Icon(Icons.auto_awesome_rounded),
+                  title: Text('AI will approve every Solo task'),
+                  subtitle: Text('Parent approval is not used in Solo mode.'),
+                )
+              else
+                SegmentedButton<MissionApprovalMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: MissionApprovalMode.manual,
+                      icon: Icon(Icons.touch_app_rounded),
+                      label: Text('I will approve'),
+                    ),
+                    ButtonSegment(
+                      value: MissionApprovalMode.ai,
+                      icon: Icon(Icons.auto_awesome_rounded),
+                      label: Text('AI will approve'),
+                    ),
+                  ],
+                  selected: {_approvalMode},
+                  onSelectionChanged: (value) =>
+                      setState(() => _approvalMode = value.first),
+                ),
               if (_approvalMode == MissionApprovalMode.ai) ...[
                 const SizedBox(height: 12),
                 DropdownButtonFormField<double>(
