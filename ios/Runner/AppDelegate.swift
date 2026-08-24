@@ -51,7 +51,8 @@ import UIKit
         result(FlutterError(code: "UNAVAILABLE", message: "App picking requires iOS 16 or newer.", details: nil))
         return
       }
-      presentAppPicker(result: result)
+      let soloMode = (call.arguments as? [String: Any])?["soloMode"] as? Bool ?? false
+      presentAppPicker(result: result, soloMode: soloMode)
     case "getConfiguration":
       guard #available(iOS 16.0, *) else {
         result(["packages": [], "remainingSeconds": 0])
@@ -65,8 +66,24 @@ import UIKit
     case "configure":
       let minutes = call.arguments as? [String: Any]
       let awardedMinutes = minutes?["awardedMinutes"] as? Int ?? 0
-      UserDefaults.standard.set(awardedMinutes * 60, forKey: "screengate_remaining_seconds")
-      updateShields(shouldBlock: awardedMinutes <= 0)
+      let soloMode = minutes?["soloMode"] as? Bool ?? false
+      let defaults = UserDefaults.standard
+      let calendar = Calendar.current
+      let day = calendar.ordinality(of: .day, in: .year, for: Date()) ?? 0
+      let year = calendar.component(.year, from: Date())
+      let dayKey = "\(year)-\(day)"
+      let dayChanged = soloMode && defaults.string(forKey: "screengate_solo_day") != dayKey
+      let previousAwarded = dayChanged ? 0 : defaults.integer(forKey: "screengate_awarded_minutes")
+      let newMinutes = max(0, awardedMinutes - previousAwarded)
+      let oldSeconds = dayChanged ? 0 : defaults.integer(forKey: "screengate_remaining_seconds")
+      let remainingSeconds = soloMode
+        ? min(60 * 60, oldSeconds + newMinutes * 60)
+        : oldSeconds + newMinutes * 60
+      defaults.set(max(previousAwarded, awardedMinutes), forKey: "screengate_awarded_minutes")
+      defaults.set(remainingSeconds, forKey: "screengate_remaining_seconds")
+      defaults.set(dayKey, forKey: "screengate_solo_day")
+      defaults.set(soloMode, forKey: "screengate_solo_mode")
+      updateShields(shouldBlock: remainingSeconds <= 0)
       result(nil)
     default:
       result(FlutterMethodNotImplemented)
@@ -74,9 +91,12 @@ import UIKit
   }
 
   @available(iOS 16.0, *)
-  private func presentAppPicker(result: @escaping FlutterResult) {
+  private func presentAppPicker(result: @escaping FlutterResult, soloMode: Bool) {
     guard AuthorizationCenter.shared.authorizationStatus == .approved else {
-      result(FlutterError(code: "NOT_AUTHORIZED", message: "A parent must turn on Screen Time first.", details: nil))
+      let message = soloMode
+        ? "Turn on Screen Time to choose apps to block."
+        : "A parent must turn on Screen Time first."
+      result(FlutterError(code: "NOT_AUTHORIZED", message: message, details: nil))
       return
     }
     guard let root = UIApplication.shared.connectedScenes
