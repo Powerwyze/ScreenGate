@@ -12,6 +12,7 @@ class UserService {
     required String selectedHandlerId,
     required String lifeGoals,
     required AccountRole accountRole,
+    UsageMode usageMode = UsageMode.family,
   }) async {
     try {
       final current = SupabaseConfig.auth.currentUser;
@@ -30,6 +31,7 @@ class UserService {
         selectedHandlerId: selectedHandlerId,
         lifeGoals: lifeGoals,
         accountRole: accountRole,
+        usageMode: usageMode,
         totalStars: 0,
         level: 1,
         currentStreak: 0,

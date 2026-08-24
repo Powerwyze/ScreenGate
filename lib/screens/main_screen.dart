@@ -38,22 +38,109 @@ class MainScreen extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final tabs = user.accountRole == AccountRole.parent
+        final tabs = user.usageMode == UsageMode.solo
             ? const [
-                _ParentHome(),
+                _SoloHome(),
                 _QuestList(isParent: true),
-                _FamilyScreen(),
-                _SettingsScreen(),
-              ]
-            : const [
-                _ChildHome(),
-                _RewardsScreen(),
                 _ProgressScreen(),
                 _SettingsScreen(),
-              ];
+              ]
+            : user.accountRole == AccountRole.parent
+                ? const [
+                    _ParentHome(),
+                    _QuestList(isParent: true),
+                    _FamilyScreen(),
+                    _SettingsScreen(),
+                  ]
+                : const [
+                    _ChildHome(),
+                    _RewardsScreen(),
+                    _ProgressScreen(),
+                    _SettingsScreen(),
+                  ];
         final index = provider.currentTab.clamp(0, tabs.length - 1);
         return ColoredBox(color: _paper, child: tabs[index]);
       },
+    );
+  }
+}
+
+class _SoloHome extends StatelessWidget {
+  const _SoloHome();
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final tasks = provider.missions;
+    final openTasks = tasks
+        .where((task) =>
+            task.status == MissionStatus.pending ||
+            task.status == MissionStatus.inProgress)
+        .toList();
+    final finished =
+        tasks.where((task) => task.status == MissionStatus.verified).length;
+    return _Page(
+      title: 'Focus, ${provider.currentUser!.codename}',
+      subtitle: 'Do a task. Earn distraction-free time.',
+      children: [
+        _HeroPanel(
+          icon: Icons.center_focus_strong_rounded,
+          title: '${_timeText(provider.availableRewardSeconds)} available',
+          body: openTasks.isEmpty
+              ? 'Make one small task to get started.'
+              : '${openTasks.length} ${openTasks.length == 1 ? 'task' : 'tasks'} ready to do.',
+          action: openTasks.isEmpty ? 'MAKE A TASK' : 'SEE TASKS',
+          onTap: () => openTasks.isEmpty
+              ? context.push('/create-mission')
+              : context.read<AppProvider>().setCurrentTab(1),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: _Metric(
+                color: _mint,
+                icon: Icons.task_alt_rounded,
+                value: '$finished',
+                label: 'tasks finished',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _Metric(
+                color: const Color(0xFFFFF1D0),
+                icon: Icons.block_rounded,
+                value: 'Focus',
+                label: 'apps blocked',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () => context.push('/create-mission'),
+            icon: const Icon(Icons.add_task_rounded),
+            label: const Text('MAKE A TASK'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => context.read<AppProvider>().setCurrentTab(3),
+            icon: const Icon(Icons.phonelink_lock_rounded),
+            label: const Text('CHOOSE DISTRACTING APPS'),
+          ),
+        ),
+        if (openTasks.isNotEmpty) ...[
+          const SizedBox(height: 28),
+          const _SectionTitle(title: 'Next tasks'),
+          const SizedBox(height: 12),
+          ...openTasks.take(3).map((task) => _QuestRow(mission: task)),
+        ],
+      ],
     );
   }
 }
@@ -666,6 +753,7 @@ class _SettingsScreenState extends State<_SettingsScreen> {
     final provider = context.watch<AppProvider>();
     final user = provider.currentUser!;
     final isChild = user.accountRole == AccountRole.child;
+    final isSolo = user.usageMode == UsageMode.solo;
 
     if (isChild && !_childUnlocked) {
       return _Page(
@@ -698,12 +786,16 @@ class _SettingsScreenState extends State<_SettingsScreen> {
             label: 'Name',
             value: user.codename),
         _SettingsRow(
-            icon: Icons.family_restroom_rounded,
+            icon: isSolo ? Icons.person_rounded : Icons.family_restroom_rounded,
             label: 'Account',
-            value: user.accountRole == AccountRole.parent ? 'Parent' : 'Child'),
+            value: isSolo
+                ? 'Solo'
+                : user.accountRole == AccountRole.parent
+                    ? 'Parent'
+                    : 'Child'),
         const SizedBox(height: 20),
         _ScreenTimeSetup(
-          soloMode: user.accountRole == AccountRole.parent,
+          soloMode: isSolo,
         ),
         if (!isChild) ...[
           const SizedBox(height: 18),
@@ -1313,7 +1405,9 @@ class _ScreenTimeSetupState extends State<_ScreenTimeSetup> {
                   ? hasApps
                       ? 'Tap below if you want to change the apps.'
                       : 'Pick games and video apps to block.'
-                  : 'A parent must tap Turn On on this iPhone.',
+                  : widget.soloMode
+                      ? 'Tap Turn On to let ScreenGate block distractions.'
+                      : 'A parent must tap Turn On on this iPhone.',
               action: status?.authorized == true
                   ? hasApps
                       ? 'CHANGE APPS'

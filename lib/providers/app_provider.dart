@@ -202,6 +202,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
     required String handlerId,
     required String lifeGoals,
     required AccountRole accountRole,
+    UsageMode usageMode = UsageMode.family,
   }) async {
     try {
       final supaUser = SupabaseConfig.auth.currentUser;
@@ -217,6 +218,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
         selectedHandlerId: handlerId,
         lifeGoals: lifeGoals,
         accountRole: accountRole,
+        usageMode: usageMode,
       );
 
       // Get handler (synchronous)

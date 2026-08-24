@@ -249,21 +249,29 @@ class GlobalBottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
-        final isParent =
-            provider.currentUser?.accountRole == AccountRole.parent;
-        final destinations = isParent
+        final user = provider.currentUser;
+        final isParent = user?.accountRole == AccountRole.parent;
+        final isSolo = user?.usageMode == UsageMode.solo;
+        final destinations = isSolo
             ? const [
-                (Icons.home_rounded, 'Home'),
+                (Icons.center_focus_strong_rounded, 'Focus'),
                 (Icons.checklist_rounded, 'Tasks'),
-                (Icons.family_restroom_rounded, 'Family'),
-                (Icons.settings_rounded, 'Settings'),
-              ]
-            : const [
-                (Icons.today_rounded, 'Today'),
-                (Icons.stars_rounded, 'Rewards'),
                 (Icons.insights_rounded, 'Progress'),
                 (Icons.settings_rounded, 'Settings'),
-              ];
+              ]
+            : isParent
+                ? const [
+                    (Icons.home_rounded, 'Home'),
+                    (Icons.checklist_rounded, 'Tasks'),
+                    (Icons.family_restroom_rounded, 'Family'),
+                    (Icons.settings_rounded, 'Settings'),
+                  ]
+                : const [
+                    (Icons.today_rounded, 'Today'),
+                    (Icons.stars_rounded, 'Rewards'),
+                    (Icons.insights_rounded, 'Progress'),
+                    (Icons.settings_rounded, 'Settings'),
+                  ];
         return NavigationBar(
           height: 70,
           backgroundColor: Colors.white,

@@ -9,6 +9,14 @@ enum AccountRole {
   }
 }
 
+enum UsageMode {
+  family,
+  solo;
+
+  static UsageMode fromJson(dynamic value) =>
+      value == UsageMode.solo.name ? UsageMode.solo : UsageMode.family;
+}
+
 class User {
   final String id;
   final String codename;
@@ -17,6 +25,7 @@ class User {
   final String selectedHandlerId;
   final String lifeGoals;
   final AccountRole accountRole;
+  final UsageMode usageMode;
   final int totalStars;
   final int level;
   final int currentStreak;
@@ -32,6 +41,7 @@ class User {
     required this.selectedHandlerId,
     required this.lifeGoals,
     required this.accountRole,
+    this.usageMode = UsageMode.family,
     required this.totalStars,
     required this.level,
     required this.currentStreak,
@@ -51,6 +61,7 @@ class User {
         'selected_handler_id': selectedHandlerId,
         'life_goals': lifeGoals,
         'account_role': accountRole.name,
+        'usage_mode': usageMode.name,
         'total_stars': totalStars,
         'level': level,
         'current_streak': currentStreak,
@@ -73,6 +84,7 @@ class User {
       selectedHandlerId: json['selected_handler_id'] as String,
       lifeGoals: json['life_goals'] as String,
       accountRole: AccountRole.fromJson(json['account_role']),
+      usageMode: UsageMode.fromJson(json['usage_mode']),
       totalStars: json['total_stars'] as int,
       level: json['level'] as int,
       currentStreak: json['current_streak'] as int,
@@ -90,6 +102,7 @@ class User {
     String? selectedHandlerId,
     String? lifeGoals,
     AccountRole? accountRole,
+    UsageMode? usageMode,
     int? totalStars,
     int? level,
     int? currentStreak,
@@ -105,6 +118,7 @@ class User {
         selectedHandlerId: selectedHandlerId ?? this.selectedHandlerId,
         lifeGoals: lifeGoals ?? this.lifeGoals,
         accountRole: accountRole ?? this.accountRole,
+        usageMode: usageMode ?? this.usageMode,
         totalStars: totalStars ?? this.totalStars,
         level: level ?? this.level,
         currentStreak: currentStreak ?? this.currentStreak,

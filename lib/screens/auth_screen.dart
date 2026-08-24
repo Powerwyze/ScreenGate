@@ -219,7 +219,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 text: TextSpan(
                   children: [
                     TextSpan(
-                      text: 'QUES',
+                      text: 'SCREEN',
                       style:
                           Theme.of(context).textTheme.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
@@ -227,7 +227,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                     ),
                     TextSpan(
-                      text: 'TIME',
+                      text: 'GATE',
                       style:
                           Theme.of(context).textTheme.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
@@ -239,14 +239,14 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'One family account',
+                'Family focus or solo focus',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: const Color(0xFF667684),
                     ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Parents sign in. Kids join with the family code.',
+                'Use it with your family or block distractions for yourself.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Color(0xFF667684)),
               ),

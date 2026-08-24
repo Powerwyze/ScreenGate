@@ -161,7 +161,9 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (context.read<AppProvider>().currentUser?.accountRole ==
-                  AccountRole.parent) ...[
+                      AccountRole.parent &&
+                  context.read<AppProvider>().currentUser?.usageMode !=
+                      UsageMode.solo) ...[
                 if (_loadingChildren)
                   const LinearProgressIndicator()
                 else
@@ -200,8 +202,16 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
               TextFormField(
                 controller: _descriptionController,
                 decoration: InputDecoration(
-                  labelText: 'What should they do?',
-                  hintText: 'Put toys away and make the bed.',
+                  labelText:
+                      context.read<AppProvider>().currentUser?.usageMode ==
+                              UsageMode.solo
+                          ? 'What will you do?'
+                          : 'What should they do?',
+                  hintText:
+                      context.read<AppProvider>().currentUser?.usageMode ==
+                              UsageMode.solo
+                          ? 'Finish my report without checking social media.'
+                          : 'Put toys away and make the bed.',
                   prefixIcon: const Icon(Icons.description),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md)),

@@ -20,6 +20,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _lifeGoalsController = TextEditingController();
   Handler? _selectedHandler;
   AccountRole? _accountRole;
+  UsageMode _usageMode = UsageMode.family;
   int _currentPage = 0;
   bool _isSubmitting = false;
 
@@ -35,7 +36,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (_accountRole == null || _codenameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Choose Parent or Child, then add your name.')),
+            content: Text(
+                'Choose how you will use ScreenGate, then add your name.')),
       );
       return;
     }
@@ -58,7 +60,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         context.read<AppProvider>().handlerService.getDefaultHandler();
     await _complete(
       handlerId: defaultHandler.id,
-      lifeGoals: 'Help my family build healthy habits.',
+      lifeGoals: _usageMode == UsageMode.solo
+          ? 'Block distractions and build focused habits.'
+          : 'Help my family build healthy habits.',
     );
   }
 
@@ -97,6 +101,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         handlerId: selectedHandlerId,
         lifeGoals: selectedLifeGoals,
         accountRole: _accountRole!,
+        usageMode: _usageMode,
       );
 
       if (mounted) context.go('/home');
@@ -181,7 +186,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String get _buttonLabel {
     if (_currentPage == 2) return 'Finish';
     if (_currentPage == 0 && _accountRole == AccountRole.parent) {
-      return 'Set Up My Family';
+      return _usageMode == UsageMode.solo
+          ? 'Start Solo Mode'
+          : 'Set Up My Family';
     }
     return 'Continue';
   }
@@ -237,7 +244,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
           const SizedBox(height: 28),
-          Text('Who uses this phone?',
+          Text('How will you use ScreenGate?',
               style: context.textStyles.titleMedium!.bold),
           const SizedBox(height: 12),
           Row(
@@ -246,8 +253,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: _buildRoleChoice(
                   role: AccountRole.parent,
                   icon: Icons.family_restroom,
-                  title: 'Parent',
-                  subtitle: 'I make and approve tasks',
+                  title: 'My family',
+                  subtitle: 'Parent and child phones',
                 ),
               ),
               const SizedBox(width: 12),
@@ -260,6 +267,49 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          Semantics(
+            button: true,
+            child: InkWell(
+              onTap: () => setState(() {
+                _accountRole = AccountRole.parent;
+                _usageMode = UsageMode.solo;
+              }),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _usageMode == UsageMode.solo
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(
+                    color: _usageMode == UsageMode.solo
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.person_rounded),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Just me',
+                              style: TextStyle(fontWeight: FontWeight.w800)),
+                          Text('Block distractions and earn focus time'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 24),
           TextField(
@@ -293,7 +343,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     required String title,
     required String subtitle,
   }) {
-    final selected = _accountRole == role;
+    final selected = _accountRole == role && _usageMode == UsageMode.family;
     final colors = Theme.of(context).colorScheme;
 
     return Semantics(
@@ -301,7 +351,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       selected: selected,
       label: '$title: $subtitle',
       child: InkWell(
-        onTap: () => setState(() => _accountRole = role),
+        onTap: () => setState(() {
+          _accountRole = role;
+          _usageMode = UsageMode.family;
+        }),
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: Container(
           constraints: const BoxConstraints(minHeight: 148),

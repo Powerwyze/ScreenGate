@@ -195,12 +195,15 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
   }
 
   void _showVerifyDialog() {
+    final isSolo =
+        context.read<AppProvider>().currentUser?.usageMode == UsageMode.solo;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Send to your parent?'),
-        content: const Text(
-            'Your parent will review both photos and approve your screen time.'),
+        title: Text(isSolo ? 'Finish this task?' : 'Send to your parent?'),
+        content: Text(isSolo
+            ? 'Mark it finished, then check your work to earn the time.'
+            : 'Your parent will review both photos and approve your screen time.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -211,7 +214,7 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
               Navigator.pop(context);
               _submitForParentReview();
             },
-            child: const Text('SEND'),
+            child: Text(isSolo ? 'FINISH' : 'SEND'),
           ),
         ],
       ),
@@ -234,8 +237,12 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
       }
 
       if (mounted) {
+        final isSolo = provider.currentUser?.usageMode == UsageMode.solo;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sent to your parent for approval.')),
+          SnackBar(
+              content: Text(isSolo
+                  ? 'Task finished. Check it to earn your time.'
+                  : 'Sent to your parent for approval.')),
         );
       }
     } catch (e) {

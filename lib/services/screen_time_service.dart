@@ -158,7 +158,7 @@ class ScreenTimeService {
       'p_device_role': role,
       'p_device_name': value.deviceName,
       'p_os_version': value.osVersion,
-      'p_app_version': '1.7.2',
+      'p_app_version': '1.8.0',
       'p_screen_time_authorized': value.authorized,
       'p_remaining_seconds': remainingSeconds,
     });
