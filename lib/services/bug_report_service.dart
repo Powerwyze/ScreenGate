@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:screengate/models/bug_report.dart';
 import 'package:screengate/supabase/supabase_config.dart';
 import 'package:uuid/uuid.dart';
+import 'package:screengate/services/user_service.dart';
 
 class BugReportService {
   final _uuid = const Uuid();
@@ -21,14 +22,14 @@ class BugReportService {
 
       final bugReport = BugReport(
         id: _uuid.v4(),
-        userId: user.id,
+        userId: UserService.activeProfileId ?? user.id,
         userEmail: user.email ?? 'unknown',
         title: title,
         description: description,
         severity: severity,
         status: BugStatus.open,
         deviceInfo: deviceInfo,
-        appVersion: appVersion ?? '1.0.0',
+        appVersion: appVersion ?? '1.8.2',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -43,7 +44,7 @@ class BugReportService {
 
   Future<List<BugReport>> getUserBugReports() async {
     try {
-      final userId = SupabaseConfig.auth.currentUser?.id;
+      final userId = UserService.activeProfileId;
       if (userId == null) return [];
 
       final results = await SupabaseService.select(

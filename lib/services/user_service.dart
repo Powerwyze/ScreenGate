@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:screengate/models/user.dart';
 import 'package:screengate/supabase/supabase_config.dart';
 import 'package:screengate/services/mission_service.dart';
+import 'package:uuid/uuid.dart';
 
 class UserService {
+  static String? activeProfileId;
   UserService();
 
   Future<User> createUser({
@@ -20,12 +22,20 @@ class UserService {
         throw Exception(
             'No authenticated user. Please sign in before creating a profile.');
       }
-      final userId = current.id;
+      final existing = await SupabaseConfig.client
+          .from('users')
+          .select()
+          .eq('auth_user_id', current.id)
+          .eq('usage_mode', usageMode.name)
+          .maybeSingle();
+      final userId = existing?['id'] as String? ??
+          (usageMode == UsageMode.family ? current.id : const Uuid().v4());
 
       // Build the user payload and upsert in one go to avoid a pre-select
       final now = DateTime.now();
       final payload = User(
         id: userId,
+        authUserId: current.id,
         codename: codename,
         email: email,
         selectedHandlerId: selectedHandlerId,
@@ -50,6 +60,7 @@ class UserService {
       // Supabase returns the row(s) after upsert; use the first
       if (res.isNotEmpty) {
         final saved = User.fromJson(res.first);
+        activeProfileId = saved.id;
         debugPrint(
             '[UserService] Upserted user during onboarding: ${saved.id}');
 
@@ -80,11 +91,27 @@ class UserService {
     }
   }
 
-  Future<User?> getCurrentUser() async {
+  Future<User?> getCurrentUser([UsageMode mode = UsageMode.family]) async {
     try {
       final userId = SupabaseConfig.auth.currentUser?.id;
       if (userId == null) return null;
-      return getUserById(userId);
+      final data = await SupabaseConfig.client
+          .from('users')
+          .select()
+          .eq('auth_user_id', userId)
+          .eq('usage_mode', mode.name)
+          .maybeSingle();
+      if (data != null) {
+        final profile = User.fromJson(data);
+        activeProfileId = profile.id;
+        return profile;
+      }
+      if (mode == UsageMode.family) {
+        final legacy = await getUserById(userId);
+        activeProfileId = legacy?.id;
+        return legacy;
+      }
+      return null;
     } catch (e) {
       debugPrint('[UserService] Error getting current user: $e');
       return null;
@@ -172,6 +199,7 @@ class UserService {
       final results = await SupabaseConfig.client
           .from('users')
           .select()
+          .eq('usage_mode', UsageMode.solo.name)
           .ilike('codename', '%$codename%')
           .limit(20);
 
@@ -219,7 +247,11 @@ class UserService {
 
   Future<List<User>> getAllUsers({int limit = 100}) async {
     try {
-      final results = await SupabaseService.select('users', limit: limit);
+      final results = await SupabaseConfig.client
+          .from('users')
+          .select()
+          .eq('usage_mode', UsageMode.solo.name)
+          .limit(limit);
       return results.map((json) => User.fromJson(json)).toList();
     } catch (e) {
       debugPrint('[UserService] Error getting all users: $e');
@@ -232,6 +264,7 @@ class UserService {
       final results = await SupabaseConfig.client
           .from('users')
           .select()
+          .eq('usage_mode', UsageMode.solo.name)
           .order('total_stars', ascending: false)
           .limit(limit);
       return results.map<User>((json) => User.fromJson(json)).toList();

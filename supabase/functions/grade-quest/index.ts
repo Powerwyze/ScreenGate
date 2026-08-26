@@ -29,8 +29,11 @@ Deno.serve(async (request) => {
     if (!quest.before_photo_url || !quest.after_photo_url) {
       throw new Error("Both photos are required");
     }
-    if (![quest.user_id, quest.assigned_by_user_id, quest.assigned_to_user_id]
-      .includes(auth.user.id)) throw new Error("You cannot grade this quest");
+    const involvedIds = [quest.user_id, quest.assigned_by_user_id, quest.assigned_to_user_id]
+      .filter(Boolean);
+    const { data: ownedProfiles } = await admin.from("users").select("id")
+      .in("id", involvedIds).or(`auth_user_id.eq.${auth.user.id},id.eq.${auth.user.id}`);
+    if (!ownedProfiles?.length) throw new Error("You cannot grade this task");
 
     const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",

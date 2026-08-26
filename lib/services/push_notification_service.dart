@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:screengate/supabase/supabase_config.dart';
+import 'package:screengate/services/user_service.dart';
 
 /// Background message handler (must be top-level)
 @pragma('vm:entry-point')
@@ -205,7 +206,7 @@ class PushNotificationService {
   /// Save FCM token to user profile
   Future<void> _saveFcmToken(String token) async {
     try {
-      final userId = SupabaseConfig.auth.currentUser?.id;
+      final userId = UserService.activeProfileId;
       if (userId == null) return;
 
       await SupabaseConfig.client.from('users').update({
@@ -226,7 +227,7 @@ class PushNotificationService {
         await _fcm!.deleteToken();
       }
 
-      final userId = SupabaseConfig.auth.currentUser?.id;
+      final userId = UserService.activeProfileId;
       if (userId != null) {
         await SupabaseConfig.client.from('users').update({
           'fcm_token': null,

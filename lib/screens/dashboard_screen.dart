@@ -251,8 +251,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               }
                               final friends =
                                   snapshot.data ?? const <model_user.User>[];
-                              if (friends.isEmpty)
+                              if (friends.isEmpty) {
                                 return const SizedBox.shrink();
+                              }
 
                               return _FriendsSection(friends: friends);
                             },

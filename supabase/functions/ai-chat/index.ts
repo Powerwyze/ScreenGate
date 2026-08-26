@@ -55,7 +55,11 @@ async function callOpenAI(messages: unknown[], json = false) {
       messages,
     }),
   });
-  if (!result.ok) throw new Error("AI request failed");
+  if (!result.ok) {
+    const detail = await result.text();
+    console.error("OpenAI request failed", result.status, detail);
+    throw new Error("Coach could not answer right now");
+  }
   const body = await result.json();
   return body.choices?.[0]?.message?.content ?? "";
 }
@@ -70,16 +74,24 @@ Deno.serve(async (request) => {
 
     if (action === "chatWithHandler") {
       const history = Array.isArray(body.history) ? body.history.slice(-12) : [];
+      const latestMessage = text(body.userMessage);
+      const normalizedHistory = history
+        .filter((item: any) => item && typeof item.content === "string")
+        .map((item: any) => ({
+          role: item.role === "assistant" || item.role === "handler" ? "assistant" : "user",
+          content: item.content.slice(0, 2000),
+        }));
+      if (normalizedHistory.at(-1)?.role === "user" &&
+          normalizedHistory.at(-1)?.content.trim() === latestMessage) {
+        normalizedHistory.pop();
+      }
       const messages = [
         {
           role: "system",
           content: `${handlerPrompt(handler)} Help this user turn goals into concrete missions. Keep replies concise, encouraging, and actionable. User context: ${text(body.userProfileContext, "No additional context")}`,
         },
-        ...history.filter((item: any) => item && typeof item.content === "string").map((item: any) => ({
-          role: item.role === "assistant" ? "assistant" : "user",
-          content: item.content.slice(0, 2000),
-        })),
-        { role: "user", content: text(body.userMessage) },
+        ...normalizedHistory,
+        { role: "user", content: latestMessage },
       ];
       return response({ text: await callOpenAI(messages) });
     }
@@ -100,7 +112,14 @@ Deno.serve(async (request) => {
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       ).from("missions").select("title,description,before_photo_url,after_photo_url,user_id").eq("id", missionId).single();
-      if (!mission || mission.user_id !== user.id) throw new Error("Mission not found");
+      if (!mission) throw new Error("Mission not found");
+      const admin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const { data: owner } = await admin.from("users").select("id")
+        .eq("id", mission.user_id).or(`auth_user_id.eq.${user.id},id.eq.${user.id}`).maybeSingle();
+      if (!owner) throw new Error("Mission not found");
       if (!mission.after_photo_url) throw new Error("An after photo is required");
       const content = await callOpenAI([
         { role: "system", content: `${handlerPrompt(handler)} Verify task completion conservatively. Return JSON only with stars from 1 to 5 and kind, specific feedback.` },

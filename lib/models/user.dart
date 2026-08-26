@@ -19,6 +19,7 @@ enum UsageMode {
 
 class User {
   final String id;
+  final String? authUserId;
   final String codename;
   final String email;
   final String? avatarUrl;
@@ -35,6 +36,7 @@ class User {
 
   User({
     required this.id,
+    this.authUserId,
     required this.codename,
     required this.email,
     this.avatarUrl,
@@ -50,11 +52,12 @@ class User {
     required this.updatedAt,
   });
 
-  int get nextLevelStars => (level + 1) * 100;
-  int get starsInCurrentLevel => totalStars - (level * 100);
+  int get nextLevelStars => 100;
+  int get starsInCurrentLevel => totalStars % 100;
 
   Map<String, dynamic> toJson() => {
         'id': id,
+        'auth_user_id': authUserId,
         'codename': codename,
         'email': email,
         'avatar_url': avatarUrl,
@@ -78,6 +81,7 @@ class User {
 
     return User(
       id: json['id'] as String,
+      authUserId: json['auth_user_id'] as String?,
       codename: json['codename'] as String,
       email: json['email'] as String,
       avatarUrl: json['avatar_url'] as String?,
@@ -96,6 +100,7 @@ class User {
 
   User copyWith({
     String? id,
+    String? authUserId,
     String? codename,
     String? email,
     String? avatarUrl,
@@ -112,6 +117,7 @@ class User {
   }) =>
       User(
         id: id ?? this.id,
+        authUserId: authUserId ?? this.authUserId,
         codename: codename ?? this.codename,
         email: email ?? this.email,
         avatarUrl: avatarUrl ?? this.avatarUrl,

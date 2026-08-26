@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import 'package:screengate/models/mission.dart';
 import 'package:screengate/models/notification.dart';
 import 'package:screengate/services/notification_service.dart';
+import 'package:screengate/services/user_service.dart';
 import 'package:screengate/supabase/supabase_config.dart';
 
 class MissionService {
@@ -108,9 +109,12 @@ class MissionService {
   }
 
   Future<List<Mission>> getVisibleMissions() async {
+    final profileId = UserService.activeProfileId;
+    if (profileId == null) return [];
     final results = await SupabaseConfig.client
         .from('missions')
         .select()
+        .or('user_id.eq.$profileId,assigned_by_user_id.eq.$profileId,assigned_to_user_id.eq.$profileId')
         .order('created_at', ascending: false);
     return (results as List)
         .map((json) => Mission.fromJson(Map<String, dynamic>.from(json)))
@@ -162,11 +166,19 @@ class MissionService {
   }
 
   Stream<List<Mission>> getVisibleMissionsStream() {
+    final profileId = UserService.activeProfileId;
+    if (profileId == null) return Stream.value([]);
     return SupabaseConfig.client
         .from('missions')
         .stream(primaryKey: ['id'])
         .order('created_at', ascending: false)
-        .map((data) => data.map((json) => Mission.fromJson(json)).toList());
+        .map((data) => data
+            .map((json) => Mission.fromJson(json))
+            .where((mission) =>
+                mission.userId == profileId ||
+                mission.assignedByUserId == profileId ||
+                mission.assignedToUserId == profileId)
+            .toList());
   }
 
   Future<List<Mission>> getMissionsByStatus(

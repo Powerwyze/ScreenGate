@@ -22,6 +22,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _creatingWelcomeMission = false;
   final _picker = ImagePicker();
 
+  Future<void> _editProfile() async {
+    final provider = context.read<AppProvider>();
+    final user = provider.currentUser;
+    if (user == null) return;
+    final nameController = TextEditingController(text: user.codename);
+    final goalsController = TextEditingController(text: user.lifeGoals);
+    final save = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit profile'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Your name'),
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: goalsController,
+              decoration:
+                  const InputDecoration(labelText: 'What do you want to do?'),
+              minLines: 2,
+              maxLines: 4,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (save != true) return;
+    final name = nameController.text.trim();
+    final goals = goalsController.text.trim();
+    nameController.dispose();
+    goalsController.dispose();
+    if (name.isEmpty || goals.isEmpty) return;
+    await provider.userService.updateUser(
+      user.copyWith(codename: name, lifeGoals: goals),
+    );
+    await provider.refreshUser();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile saved!')),
+      );
+    }
+  }
+
   Future<void> _changeAvatar() async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
@@ -48,9 +105,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final picked = await _picker.pickImage(
           source: source, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
       if (picked == null) return;
+      if (!mounted) return;
       setState(() => _uploadingAvatar = true);
 
       final bytes = await picked.readAsBytes();
+      if (!mounted) return;
       final provider = context.read<AppProvider>();
       final user = provider.currentUser;
       if (user == null) {
@@ -108,6 +167,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Profile'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.edit),
+            tooltip: 'Edit profile',
+            onPressed: _editProfile,
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign out',
             onPressed: () async {
@@ -125,7 +189,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 if (context.mounted) context.go('/auth');
               } catch (e) {
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(this.context).showSnackBar(
                   const SnackBar(content: Text('Sign out failed')),
                 );
               }

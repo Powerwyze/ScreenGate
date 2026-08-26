@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:screengate/auth/supabase_auth_manager.dart';
 import 'package:screengate/providers/app_provider.dart';
+import 'package:screengate/models/user.dart';
 import 'package:screengate/services/family_service.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -168,6 +169,12 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final provider = context.read<AppProvider>();
+      await provider.setPreferredUsageMode(
+        _deviceRole == 'solo' ? UsageMode.solo : UsageMode.family,
+        reload: false,
+      );
+      if (!mounted) return;
       if (_isSignUp) {
         await _authManager.createAccountWithEmail(
           context,

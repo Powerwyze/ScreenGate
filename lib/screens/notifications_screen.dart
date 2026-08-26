@@ -120,6 +120,7 @@ class NotificationsScreen extends StatelessWidget {
                     await provider.notificationService
                         .markAsRead(notification.id);
                   }
+                  if (!context.mounted) return;
                   await _handleNotificationTap(context, provider, notification);
                 },
                 onDismiss: () async {

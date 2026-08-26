@@ -1,5 +1,6 @@
 import 'package:screengate/services/solo_reward_policy.dart';
 import 'package:screengate/supabase/supabase_config.dart';
+import 'package:screengate/services/user_service.dart';
 
 class RewardService {
   Future<bool> _isSolo(String userId) async {
@@ -17,7 +18,7 @@ class RewardService {
   }
 
   Future<int> getAvailableMinutes() async {
-    final userId = SupabaseConfig.auth.currentUser?.id;
+    final userId = UserService.activeProfileId;
     if (userId == null) return 0;
 
     if (await _isSolo(userId)) {
@@ -47,7 +48,7 @@ class RewardService {
   }
 
   Stream<int> watchAvailableMinutes() {
-    final userId = SupabaseConfig.auth.currentUser?.id;
+    final userId = UserService.activeProfileId;
     if (userId == null) return const Stream<int>.empty();
     return Stream.periodic(const Duration(seconds: 4))
         .asyncMap((_) => getAvailableMinutes())

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:screengate/models/notification.dart';
 import 'package:screengate/supabase/supabase_config.dart';
 import 'package:uuid/uuid.dart';
+import 'package:screengate/services/user_service.dart';
 
 class NotificationService {
   final _uuid = const Uuid();
@@ -9,7 +10,7 @@ class NotificationService {
   NotificationService();
 
   Stream<List<AppNotification>> getNotificationsStream() {
-    final userId = SupabaseConfig.auth.currentUser?.id;
+    final userId = UserService.activeProfileId;
     if (userId == null) return Stream.value([]);
 
     return SupabaseConfig.client
@@ -24,7 +25,7 @@ class NotificationService {
 
   Future<List<AppNotification>> getNotifications({int limit = 50}) async {
     try {
-      final userId = SupabaseConfig.auth.currentUser?.id;
+      final userId = UserService.activeProfileId;
       if (userId == null) return [];
 
       final results = await SupabaseService.select(
@@ -44,7 +45,7 @@ class NotificationService {
 
   Future<int> getUnreadCount() async {
     try {
-      final userId = SupabaseConfig.auth.currentUser?.id;
+      final userId = UserService.activeProfileId;
       if (userId == null) return 0;
 
       dynamic query = SupabaseConfig.client
@@ -103,7 +104,7 @@ class NotificationService {
 
   Future<void> markAllAsRead() async {
     try {
-      final userId = SupabaseConfig.auth.currentUser?.id;
+      final userId = UserService.activeProfileId;
       if (userId == null) return;
 
       await SupabaseConfig.client
@@ -129,7 +130,7 @@ class NotificationService {
 
   Future<void> deleteAllNotifications() async {
     try {
-      final userId = SupabaseConfig.auth.currentUser?.id;
+      final userId = UserService.activeProfileId;
       if (userId == null) return;
 
       await SupabaseConfig.client

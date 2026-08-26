@@ -78,28 +78,29 @@ class _HandlerChatScreenState extends State<HandlerChatScreen> {
     final handler = provider.currentHandler;
     if (user == null || handler == null) return;
 
-    final userMessage = await provider.chatService.addMessage(
-      userId: user.id,
-      role: ChatRole.user,
-      content: _messageController.text,
-    );
+    try {
+      final userMessage = await provider.chatService.addMessage(
+        userId: user.id,
+        role: ChatRole.user,
+        content: _messageController.text,
+      );
 
-    setState(() {
-      _messages.add(userMessage);
-      _isLoading = true;
-    });
-    _messageController.clear();
-    _scrollToBottom();
+      setState(() {
+        _messages.add(userMessage);
+        _isLoading = true;
+      });
+      _messageController.clear();
+      _scrollToBottom();
 
-    final conversationHistory = _messages
-        .map((m) => {
-              'role': m.role.name,
-              'content': m.content,
-            })
-        .toList();
+      final conversationHistory = _messages
+          .map((m) => {
+                'role': m.role.name,
+                'content': m.content,
+              })
+          .toList();
 
-    // Build user profile context
-    final userProfileContext = '''
+      // Build user profile context
+      final userProfileContext = '''
 Codename: ${user.codename}
 Life Goals: ${user.lifeGoals}
 Current Level: ${user.level} (${user.totalStars} stars earned)
@@ -107,16 +108,25 @@ Current Streak: ${user.currentStreak} days
 Longest Streak: ${user.longestStreak} days
 ''';
 
-    final response = await provider.aiService.chatWithHandler(
-      handler: handler,
-      userMessage: userMessage.content,
-      conversationHistory: conversationHistory,
-      userProfileContext: userProfileContext,
-    );
+      final response = await provider.aiService.chatWithHandler(
+        handler: handler,
+        userMessage: userMessage.content,
+        conversationHistory: conversationHistory,
+        userProfileContext: userProfileContext,
+      );
 
-    // No auto-assignment - user must explicitly accept suggested missions
-    await _addHandlerMessage(response);
-    setState(() => _isLoading = false);
+      // No auto-assignment - user must explicitly accept suggested missions
+      await _addHandlerMessage(response);
+    } catch (error) {
+      debugPrint('Coach message failed: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Coach could not answer. Try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _confirmClearChat() async {

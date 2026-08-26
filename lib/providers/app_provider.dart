@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:screengate/models/user.dart';
 import 'package:screengate/models/handler.dart';
 import 'package:screengate/models/mission.dart';
@@ -23,6 +24,8 @@ import 'package:screengate/supabase/supabase_config.dart';
 
 class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
   int _currentTab = 0;
+  UsageMode _preferredUsageMode = UsageMode.family;
+  UsageMode get preferredUsageMode => _preferredUsageMode;
   int get currentTab => _currentTab;
 
   void setCurrentTab(int index) {
@@ -77,6 +80,10 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
     if (_isInitialized) return;
 
     try {
+      final preferences = await SharedPreferences.getInstance();
+      _preferredUsageMode = UsageMode.fromJson(
+        preferences.getString('screengate_usage_mode'),
+      );
       // Initialize storage first
 
       // Initialize all services (synchronous - no risk of blocking)
@@ -121,6 +128,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
             _refreshTimer?.cancel();
             _refreshTimer = null;
             _currentUser = null;
+            UserService.activeProfileId = null;
             _currentHandler = null;
             _missions = [];
             _profileResolved = true; // nothing to resolve when signed out
@@ -149,9 +157,10 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
     if (SupabaseConfig.auth.currentUser == null) return;
 
     try {
-      _currentUser = await userService.getCurrentUser();
+      _currentUser = await userService.getCurrentUser(_preferredUsageMode);
 
       if (_currentUser != null) {
+        UserService.activeProfileId = _currentUser!.id;
         if (_currentUser!.accountRole == AccountRole.child) {
           await FamilyService().rememberChild(RememberedChild(
             id: _currentUser!.id,
@@ -220,6 +229,8 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
         accountRole: accountRole,
         usageMode: usageMode,
       );
+      _preferredUsageMode = usageMode;
+      UserService.activeProfileId = _currentUser!.id;
 
       // Get handler (synchronous)
       _currentHandler = handlerService.getHandlerById(handlerId) ??
@@ -345,6 +356,26 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
+  Future<void> setPreferredUsageMode(UsageMode mode,
+      {bool reload = true}) async {
+    _preferredUsageMode = mode;
+    _currentTab = 0;
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString('screengate_usage_mode', mode.name);
+    await _missionSubscription?.cancel();
+    _missionSubscription = null;
+    await _rewardSubscription?.cancel();
+    _rewardSubscription = null;
+    _currentUser = null;
+    _currentHandler = null;
+    _missions = [];
+    UserService.activeProfileId = null;
+    notifyListeners();
+    if (reload && SupabaseConfig.auth.currentUser != null) {
+      await reloadProfile();
+    }
+  }
+
   Future<void> updateHandler(String handlerId) async {
     if (_currentUser == null) return;
     try {
@@ -402,6 +433,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
       _refreshTimer = null;
       await SupabaseConfig.auth.signOut();
       _currentUser = null;
+      UserService.activeProfileId = null;
       _currentHandler = null;
       _missions = [];
       _availableRewardMinutes = 0;
