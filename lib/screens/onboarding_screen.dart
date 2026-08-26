@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:screengate/widgets/solo_tutorial.dart';
 import 'package:provider/provider.dart';
 import 'package:screengate/providers/app_provider.dart';
@@ -23,8 +22,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Handler? _selectedHandler;
   AccountRole? _accountRole;
   UsageMode _usageMode = UsageMode.family;
+  bool _modeInitialized = false;
   int _currentPage = 0;
   bool _isSubmitting = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_modeInitialized) return;
+    _modeInitialized = true;
+    final preferredMode = context.read<AppProvider>().preferredUsageMode;
+    if (preferredMode == UsageMode.solo) {
+      _usageMode = UsageMode.solo;
+      _accountRole = AccountRole.parent;
+    }
+  }
 
   @override
   void dispose() {
@@ -32,17 +44,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _codenameController.dispose();
     _lifeGoalsController.dispose();
     super.dispose();
-  }
-
-  Future<void> _selectSoloMode() async {
-    setState(() {
-      _accountRole = AccountRole.parent;
-      _usageMode = UsageMode.solo;
-    });
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted || prefs.getBool('solo_tutorial_seen') == true) return;
-    await prefs.setBool('solo_tutorial_seen', true);
-    if (mounted) await showSoloTutorial(context, firstRun: true);
   }
 
   Future<void> _openSoloHelper() => showSoloHelper(context);
@@ -267,70 +268,42 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
           const SizedBox(height: 28),
-          Text('How will you use ScreenGate?',
-              style: context.textStyles.titleMedium!.bold),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildRoleChoice(
-                  role: AccountRole.parent,
-                  icon: Icons.family_restroom,
-                  title: 'My family',
-                  subtitle: 'Parent and child phones',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildRoleChoice(
-                  role: AccountRole.child,
-                  icon: Icons.stars_rounded,
-                  title: 'Child',
-                  subtitle: 'I finish my tasks',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Semantics(
-            button: true,
-            child: InkWell(
-              onTap: _selectSoloMode,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _usageMode == UsageMode.solo
-                      ? Theme.of(context).colorScheme.primaryContainer
-                      : Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(
-                    color: _usageMode == UsageMode.solo
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.transparent,
-                    width: 2,
-                  ),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.person_rounded),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Just me',
-                              style: TextStyle(fontWeight: FontWeight.w800)),
-                          Text('Block distractions and earn focus time'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+          if (_usageMode == UsageMode.solo) ...[
+            Text('What should we call you?',
+                style: context.textStyles.titleLarge!.bold),
+            const SizedBox(height: 8),
+            Text(
+              'Your Solo space is only for you.',
+              style: context.textStyles.bodyMedium!.withColor(
+                Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-          ),
+          ] else ...[
+            Text('How will you use ScreenGate?',
+                style: context.textStyles.titleMedium!.bold),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildRoleChoice(
+                    role: AccountRole.parent,
+                    icon: Icons.family_restroom,
+                    title: 'My family',
+                    subtitle: 'Parent and child phones',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildRoleChoice(
+                    role: AccountRole.child,
+                    icon: Icons.stars_rounded,
+                    title: 'Child',
+                    subtitle: 'I finish my tasks',
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 24),
           TextField(
             controller: _codenameController,
@@ -347,7 +320,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'v1.6.0',
+              'v1.8.3',
               style:
                   context.textStyles.bodySmall?.withColor(AppColors.textMuted),
             ),
