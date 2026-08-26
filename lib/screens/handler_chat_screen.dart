@@ -313,11 +313,14 @@ Longest Streak: ${user.longestStreak} days
                   Expanded(
                     child: TextField(
                       controller: _messageController,
-                      style: context.textStyles.bodyMedium,
+                      style: context.textStyles.bodyMedium!.copyWith(
+                        color: CyberpunkColors.textPrimary,
+                      ),
+                      cursorColor: CyberpunkColors.neonTealBright,
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
                         hintStyle: context.textStyles.bodyMedium!
-                            .copyWith(color: CyberpunkColors.textMuted),
+                            .copyWith(color: CyberpunkColors.textSecondary),
                         filled: true,
                         fillColor: CyberpunkColors.surfaceVariant,
                         border: OutlineInputBorder(
@@ -440,6 +443,8 @@ Longest Streak: ${user.longestStreak} days
                       cleanedText,
                       style: context.textStyles.bodyMedium!.copyWith(
                         color: CyberpunkColors.textPrimary,
+                        fontWeight: FontWeight.w500,
+                        height: 1.45,
                       ),
                     ),
                   if (!isUser)

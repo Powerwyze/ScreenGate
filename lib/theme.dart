@@ -61,7 +61,7 @@ class AppColors {
 
   // Primary - Steel Blue from logo
   static const Color steelBlue = Color(0xFF4A7BAD);
-  static const Color steelBlueBright = Color(0xFF5B8FC4);
+  static const Color steelBlueBright = Color(0xFF8BC8F2);
   static const Color steelBlueDark = Color(0xFF3A6490);
 
   // Secondary - Dark Navy/Charcoal (assassin cloak)
@@ -88,8 +88,9 @@ class AppColors {
 
   // Text colors
   static const Color textPrimary = Color(0xFFFFFFFF); // Pure white
-  static const Color textSecondary = Color(0xFFE0E9F2); // Very light steel
-  static const Color textMuted = Color(0xFFB0C4D9); // Brighter blue-gray
+  static const Color textSecondary =
+      Color(0xFFF0F5FA); // Near-white for dark UI
+  static const Color textMuted = Color(0xFFD5E1EC); // High-contrast helper text
 
   // Border colors
   static const Color border = Color(0xFF3A5170);
@@ -221,7 +222,7 @@ ThemeData get darkTheme => ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: CyberpunkColors.background,
       colorScheme: ColorScheme.dark(
-        primary: CyberpunkColors.neonTeal,
+        primary: CyberpunkColors.neonTealBright,
         onPrimary: CyberpunkColors.background,
         primaryContainer: CyberpunkColors.neonTealDark,
         onPrimaryContainer: CyberpunkColors.neonTealBright,
@@ -318,6 +319,9 @@ ThemeData get darkTheme => ThemeData(
         ),
         hintStyle: TextStyle(color: CyberpunkColors.textMuted),
         labelStyle: TextStyle(color: CyberpunkColors.textSecondary),
+        helperStyle: TextStyle(color: CyberpunkColors.textMuted),
+        prefixIconColor: CyberpunkColors.textSecondary,
+        suffixIconColor: CyberpunkColors.textSecondary,
       ),
       chipTheme: ChipThemeData(
         backgroundColor: CyberpunkColors.surfaceVariant,
