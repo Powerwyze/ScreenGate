@@ -5,6 +5,7 @@ import 'package:screengate/providers/app_provider.dart';
 import 'package:screengate/models/user.dart';
 import 'package:screengate/models/friend.dart';
 import 'package:screengate/theme.dart';
+import 'package:screengate/widgets/social_feed.dart';
 
 class SocialScreen extends StatefulWidget {
   const SocialScreen({super.key});
@@ -20,7 +21,7 @@ class _SocialScreenState extends State<SocialScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -44,6 +45,8 @@ class _SocialScreenState extends State<SocialScreen>
         ),
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           indicatorColor: CyberpunkColors.neonTeal,
           labelColor: CyberpunkColors.neonTeal,
           unselectedLabelColor: CyberpunkColors.textMuted,
@@ -51,6 +54,7 @@ class _SocialScreenState extends State<SocialScreen>
           labelStyle: context.textStyles.labelSmall,
           unselectedLabelStyle: context.textStyles.labelSmall,
           tabs: const [
+            Tab(icon: Icon(Icons.dynamic_feed_rounded), text: 'FEED'),
             Tab(icon: Icon(Icons.people), text: 'FRIENDS'),
             Tab(icon: Icon(Icons.notifications), text: 'REQUESTS'),
             Tab(icon: Icon(Icons.leaderboard), text: 'BOARD'),
@@ -61,6 +65,7 @@ class _SocialScreenState extends State<SocialScreen>
       body: TabBarView(
         controller: _tabController,
         children: const [
+          SocialFeed(),
           _FriendsTab(),
           _RequestsTab(),
           _LeaderboardTab(),
@@ -99,7 +104,7 @@ class _FriendsTabState extends State<_FriendsTab> {
     }
 
     final friends = await provider.friendService.getFriendsByUserId(userId);
-    final friendUserIds = friends.map((f) => f.friendUserId).toList();
+    final friendUserIds = friends.map((f) => f.otherUserId(userId)).toList();
     final friendUsers = await provider.userService.getUsersByIds(friendUserIds);
 
     final friendUsersMap = <String, User>{};
@@ -127,6 +132,7 @@ class _FriendsTabState extends State<_FriendsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId = context.read<AppProvider>().currentUser?.id ?? '';
     if (_isLoading) {
       return Center(
           child: CircularProgressIndicator(color: CyberpunkColors.neonTeal));
@@ -165,7 +171,7 @@ class _FriendsTabState extends State<_FriendsTab> {
         itemCount: _friends.length,
         itemBuilder: (context, index) {
           final friend = _friends[index];
-          final friendUser = _friendUsers[friend.friendUserId];
+          final friendUser = _friendUsers[friend.otherUserId(currentUserId)];
 
           if (friendUser == null) return const SizedBox.shrink();
 
@@ -633,6 +639,8 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
   List<User> _searchResults = [];
   bool _isSearching = false;
   final Set<String> _sentRequests = {};
+  final Set<String> _friendIds = {};
+  final Map<String, Friend> _incomingRequests = {};
   List<User> _allUsers = [];
   bool _loadingAll = true;
 
@@ -640,7 +648,7 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
   void initState() {
     super.initState();
     _loadAllUsers();
-    _primePendingSentRequests();
+    _loadRelationships();
   }
 
   @override
@@ -666,19 +674,42 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
     }
   }
 
-  Future<void> _primePendingSentRequests() async {
+  Future<void> _loadRelationships() async {
     try {
       final provider = context.read<AppProvider>();
       final currentUserId = provider.currentUser?.id;
       if (currentUserId == null) return;
-      final pending =
-          await provider.friendService.getPendingRequestsSentBy(currentUserId);
+      final connections =
+          await provider.friendService.getConnections(currentUserId);
+      if (!mounted) return;
       setState(() {
-        _sentRequests.addAll(pending.map((f) => f.friendUserId));
+        _sentRequests
+          ..clear()
+          ..addAll(connections
+              .where((item) =>
+                  item.status == FriendStatus.pending &&
+                  item.userId == currentUserId)
+              .map((item) => item.friendUserId));
+        _friendIds
+          ..clear()
+          ..addAll(connections
+              .where((item) => item.status == FriendStatus.accepted)
+              .map((item) => item.otherUserId(currentUserId)));
+        _incomingRequests
+          ..clear()
+          ..addEntries(connections
+              .where((item) =>
+                  item.status == FriendStatus.pending &&
+                  item.friendUserId == currentUserId)
+              .map((item) => MapEntry(item.userId, item)));
       });
     } catch (e) {
-      debugPrint('Error priming pending sent requests: $e');
+      debugPrint('Error loading relationships: $e');
     }
+  }
+
+  Future<void> _refresh() async {
+    await Future.wait([_loadAllUsers(), _loadRelationships()]);
   }
 
   Future<void> _searchUsers(String query) async {
@@ -712,11 +743,24 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
     if (currentUserId == null) return;
 
     try {
-      await provider.friendService.sendFriendRequest(currentUserId, user.id);
-      setState(() => _sentRequests.add(user.id));
+      final relationship = await provider.friendService
+          .sendFriendRequest(currentUserId, user.id);
+      if (!mounted) return;
+      setState(() {
+        if (relationship.status == FriendStatus.accepted) {
+          _friendIds.add(user.id);
+          _incomingRequests.remove(user.id);
+        } else {
+          _sentRequests.add(user.id);
+        }
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Friend request sent to ${user.codename}')),
+          SnackBar(
+            content: Text(relationship.status == FriendStatus.accepted
+                ? 'You and ${user.codename} are now friends.'
+                : 'Friend request sent to ${user.codename}.'),
+          ),
         );
       }
     } catch (e) {
@@ -726,6 +770,53 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
         );
       }
     }
+  }
+
+  Future<void> _acceptIncoming(User user) async {
+    final request = _incomingRequests[user.id];
+    if (request == null) return;
+    try {
+      await context
+          .read<AppProvider>()
+          .friendService
+          .acceptFriendRequest(request.id);
+      if (!mounted) return;
+      setState(() {
+        _incomingRequests.remove(user.id);
+        _friendIds.add(user.id);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('You and ${user.codename} are now friends.')),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not accept that request.')),
+        );
+      }
+    }
+  }
+
+  Widget _relationshipButton(User user) {
+    if (_friendIds.contains(user.id)) {
+      return const Chip(
+        avatar: Icon(Icons.check_rounded, size: 18),
+        label: Text('Friends'),
+      );
+    }
+    if (_incomingRequests.containsKey(user.id)) {
+      return FilledButton(
+        onPressed: () => _acceptIncoming(user),
+        child: const Text('Accept'),
+      );
+    }
+    if (_sentRequests.contains(user.id)) {
+      return const TextButton(onPressed: null, child: Text('Sent'));
+    }
+    return FilledButton(
+      onPressed: () => _sendFriendRequest(user),
+      child: const Text('Add'),
+    );
   }
 
   @override
@@ -799,8 +890,6 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
               itemCount: _searchResults.length,
               itemBuilder: (context, index) {
                 final user = _searchResults[index];
-                final requestSent = _sentRequests.contains(user.id);
-
                 return Card(
                   margin: AppSpacing.verticalSm,
                   child: ListTile(
@@ -818,15 +907,7 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
                         style: context.textStyles.titleMedium!.semiBold),
                     subtitle:
                         Text('Level ${user.level} • ${user.totalStars} ⭐'),
-                    trailing: requestSent
-                        ? TextButton(
-                            onPressed: null,
-                            child: const Text('Sent'),
-                          )
-                        : FilledButton(
-                            onPressed: () => _sendFriendRequest(user),
-                            child: const Text('Add'),
-                          ),
+                    trailing: _relationshipButton(user),
                   ),
                 );
               },
@@ -837,13 +918,12 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
             child: _loadingAll
                 ? const Center(child: CircularProgressIndicator())
                 : RefreshIndicator(
-                    onRefresh: _loadAllUsers,
+                    onRefresh: _refresh,
                     child: ListView.builder(
                       padding: AppSpacing.paddingMd,
                       itemCount: _allUsers.length,
                       itemBuilder: (context, index) {
                         final user = _allUsers[index];
-                        final requestSent = _sentRequests.contains(user.id);
                         return Card(
                           margin: AppSpacing.verticalSm,
                           child: ListTile(
@@ -866,13 +946,7 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
                                     context.textStyles.titleMedium!.semiBold),
                             subtitle: Text(
                                 'Level ${user.level} • ${user.totalStars} ⭐'),
-                            trailing: requestSent
-                                ? TextButton(
-                                    onPressed: null, child: const Text('Sent'))
-                                : FilledButton(
-                                    onPressed: () => _sendFriendRequest(user),
-                                    child: const Text('Add'),
-                                  ),
+                            trailing: _relationshipButton(user),
                           ),
                         );
                       },

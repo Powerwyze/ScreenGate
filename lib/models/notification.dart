@@ -5,6 +5,8 @@ enum NotificationType {
   missionCompleted,
   achievementUnlocked,
   message,
+  postLike,
+  postComment,
   system,
 }
 

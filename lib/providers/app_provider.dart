@@ -12,6 +12,7 @@ import 'package:screengate/services/mission_service.dart';
 import 'package:screengate/services/achievement_service.dart';
 import 'package:screengate/services/friend_service.dart';
 import 'package:screengate/services/message_service.dart';
+import 'package:screengate/services/social_service.dart';
 import 'package:screengate/services/chat_service.dart';
 import 'package:screengate/services/ai_service.dart';
 import 'package:screengate/services/notification_service.dart';
@@ -39,6 +40,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
   late final AchievementService achievementService;
   late final FriendService friendService;
   late final MessageService messageService;
+  late final SocialService socialService;
   late final ChatService chatService;
   late final AIService aiService;
   late final NotificationService notificationService;
@@ -92,10 +94,14 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
       handlerService = HandlerService();
       achievementService = AchievementService();
       friendService = FriendService();
-      messageService = MessageService();
+      notificationService = NotificationService();
+      messageService = MessageService(notificationService: notificationService);
+      socialService = SocialService(
+        friendService: friendService,
+        notificationService: notificationService,
+      );
       chatService = ChatService();
       aiService = AIService();
-      notificationService = NotificationService();
       bugReportService = BugReportService();
       WidgetsBinding.instance.addObserver(this);
 

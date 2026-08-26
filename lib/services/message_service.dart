@@ -4,9 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'package:screengate/models/message.dart';
 import 'package:screengate/supabase/supabase_config.dart';
+import 'package:screengate/models/notification.dart';
+import 'package:screengate/services/notification_service.dart';
 
 class MessageService {
-  MessageService();
+  final NotificationService _notificationService;
+
+  MessageService({NotificationService? notificationService})
+      : _notificationService = notificationService ?? NotificationService();
 
   Future<Message> sendMessage({
     required String senderId,
@@ -19,16 +24,33 @@ class MessageService {
         throw Exception('You can only message accepted friends.');
       }
 
+      final cleanContent = content.trim();
+      if (cleanContent.isEmpty) throw Exception('Write a message first.');
       final message = Message(
         id: const Uuid().v4(),
         senderId: senderId,
         receiverId: receiverId,
-        content: content,
+        content: cleanContent,
         isRead: false,
         createdAt: DateTime.now(),
       );
 
       await SupabaseService.insert('messages', message.toJson());
+      try {
+        final sender = await SupabaseService.selectSingle(
+          'users',
+          filters: {'id': senderId},
+        );
+        await _notificationService.createNotification(
+          userId: receiverId,
+          type: NotificationType.message,
+          title: 'New message',
+          message: '${sender?['codename'] ?? 'A friend'} sent you a message.',
+          data: {'sender_id': senderId},
+        );
+      } catch (error) {
+        debugPrint('[MessageService] Message notification failed: $error');
+      }
       return message;
     } catch (e) {
       debugPrint('[MessageService] Error sending message: $e');

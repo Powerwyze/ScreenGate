@@ -162,6 +162,7 @@ Future<void> _handleNotificationTap(
     case NotificationType.friendRequest:
     case NotificationType.friendAccepted:
       if (context.mounted) {
+        provider.setCurrentTab(2);
         context.go('/home');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -170,7 +171,20 @@ Future<void> _handleNotificationTap(
       }
       break;
     case NotificationType.message:
-      if (context.mounted) context.go('/handler-chat');
+      final senderId = notification.data?['sender_id'] as String?;
+      final sender = senderId == null
+          ? null
+          : await provider.userService.getUserById(senderId);
+      if (sender != null && context.mounted) {
+        context.push('/direct-message', extra: sender);
+      }
+      break;
+    case NotificationType.postLike:
+    case NotificationType.postComment:
+      if (context.mounted) {
+        provider.setCurrentTab(2);
+        context.go('/home');
+      }
       break;
     case NotificationType.achievementUnlocked:
       if (context.mounted) context.go('/home');
@@ -311,6 +325,10 @@ class NotificationCard extends StatelessWidget {
         return Icons.emoji_events;
       case NotificationType.message:
         return Icons.message;
+      case NotificationType.postLike:
+        return Icons.favorite;
+      case NotificationType.postComment:
+        return Icons.chat_bubble;
       case NotificationType.system:
         return Icons.info;
     }
@@ -328,6 +346,10 @@ class NotificationCard extends StatelessWidget {
         return Colors.amber;
       case NotificationType.message:
         return Colors.green;
+      case NotificationType.postLike:
+        return Colors.pinkAccent;
+      case NotificationType.postComment:
+        return Colors.tealAccent;
       case NotificationType.system:
         return Theme.of(context).colorScheme.secondary;
     }

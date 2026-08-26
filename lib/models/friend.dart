@@ -45,4 +45,7 @@ class Friend {
         status: status ?? this.status,
         createdAt: createdAt ?? this.createdAt,
       );
+
+  String otherUserId(String currentUserId) =>
+      userId == currentUserId ? friendUserId : userId;
 }

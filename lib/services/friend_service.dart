@@ -14,6 +14,25 @@ class FriendService {
 
   Future<Friend> sendFriendRequest(String userId, String friendUserId) async {
     try {
+      if (userId == friendUserId) {
+        throw Exception('You cannot add yourself.');
+      }
+
+      final existingRows = await SupabaseConfig.client
+          .from('friends')
+          .select()
+          .or('and(user_id.eq.$userId,friend_user_id.eq.$friendUserId),and(user_id.eq.$friendUserId,friend_user_id.eq.$userId)')
+          .limit(1);
+      if (existingRows.isNotEmpty) {
+        final existing = Friend.fromJson(existingRows.first);
+        if (existing.status == FriendStatus.accepted) return existing;
+        if (existing.friendUserId == userId) {
+          await acceptFriendRequest(existing.id);
+          return existing.copyWith(status: FriendStatus.accepted);
+        }
+        return existing;
+      }
+
       final friend = Friend(
         id: const Uuid().v4(),
         userId: userId,
@@ -28,13 +47,17 @@ class FriendService {
           await SupabaseService.selectSingle('users', filters: {'id': userId});
       final senderName = senderData?['codename'] ?? 'Someone';
 
-      await _notificationService.createNotification(
-        userId: friendUserId,
-        type: NotificationType.friendRequest,
-        title: 'New Friend Request',
-        message: '$senderName wants to be your friend!',
-        data: {'friend_id': friend.id, 'sender_id': userId},
-      );
+      try {
+        await _notificationService.createNotification(
+          userId: friendUserId,
+          type: NotificationType.friendRequest,
+          title: 'New Friend Request',
+          message: '$senderName wants to be your friend!',
+          data: {'friend_id': friend.id, 'sender_id': userId},
+        );
+      } catch (error) {
+        debugPrint('[FriendService] Request notification failed: $error');
+      }
 
       return friend;
     } catch (e) {
@@ -61,13 +84,17 @@ class FriendService {
           filters: {'id': friend.friendUserId});
       final accepterName = accepterData?['codename'] ?? 'Someone';
 
-      await _notificationService.createNotification(
-        userId: friend.userId,
-        type: NotificationType.friendAccepted,
-        title: 'Friend Request Accepted',
-        message: '$accepterName accepted your friend request!',
-        data: {'friend_id': friendId, 'accepter_id': friend.friendUserId},
-      );
+      try {
+        await _notificationService.createNotification(
+          userId: friend.userId,
+          type: NotificationType.friendAccepted,
+          title: 'Friend Request Accepted',
+          message: '$accepterName accepted your friend request!',
+          data: {'friend_id': friendId, 'accepter_id': friend.friendUserId},
+        );
+      } catch (error) {
+        debugPrint('[FriendService] Accepted notification failed: $error');
+      }
     } catch (e) {
       debugPrint('[FriendService] Error accepting friend request: $e');
       rethrow;
@@ -110,6 +137,19 @@ class FriendService {
       return results.map<Friend>((json) => Friend.fromJson(json)).toList();
     } catch (e) {
       debugPrint('[FriendService] Error getting friends: $e');
+      return [];
+    }
+  }
+
+  Future<List<Friend>> getConnections(String userId) async {
+    try {
+      final results = await SupabaseConfig.client
+          .from('friends')
+          .select()
+          .or('user_id.eq.$userId,friend_user_id.eq.$userId');
+      return results.map<Friend>((json) => Friend.fromJson(json)).toList();
+    } catch (e) {
+      debugPrint('[FriendService] Error getting connections: $e');
       return [];
     }
   }
