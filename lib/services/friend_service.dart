@@ -170,6 +170,18 @@ class FriendService {
     }
   }
 
+  Stream<List<Friend>> getPendingRequestsStream(String userId) {
+    return SupabaseConfig.client
+        .from('friends')
+        .stream(primaryKey: ['id'])
+        .eq('friend_user_id', userId)
+        .order('created_at', ascending: false)
+        .map((rows) => rows
+            .map(Friend.fromJson)
+            .where((friend) => friend.status == FriendStatus.pending)
+            .toList());
+  }
+
   Future<List<Friend>> getPendingRequestsSentBy(String userId) async {
     try {
       final results = await SupabaseService.select(

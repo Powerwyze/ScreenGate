@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:screengate/services/image_upload_service.dart';
 import 'package:screengate/providers/app_provider.dart';
 import 'package:screengate/models/mission.dart';
+import 'package:screengate/models/social_post.dart';
 import 'package:screengate/models/user.dart';
 import 'package:screengate/theme.dart';
 import 'package:intl/intl.dart';
@@ -16,6 +17,8 @@ import 'package:go_router/go_router.dart';
 // Removed heavy image manipulation; reusing reliable avatar upload pipeline
 
 enum _PickSource { camera, gallery }
+
+enum _ShareChoice { everyone, friends, remove }
 
 // Note: If we want to reintroduce stamping later, we can add an optional
 // transformer here. For now, we prioritize reliability and reuse the
@@ -35,11 +38,134 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
   final _imagePicker = ImagePicker();
   bool _isVerifying = false;
   bool _isUploading = false;
+  bool _isSharing = false;
+  SocialPost? _sharedPost;
 
   @override
   void initState() {
     super.initState();
     _mission = widget.mission;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSharedTask());
+  }
+
+  Future<void> _loadSharedTask() async {
+    final provider = context.read<AppProvider>();
+    final user = provider.currentUser;
+    if (user == null || user.usageMode != UsageMode.solo) return;
+    try {
+      final shared = await provider.socialService.getSharedTask(
+        missionId: _mission.id,
+        viewerId: user.id,
+      );
+      if (mounted) setState(() => _sharedPost = shared);
+    } catch (error) {
+      debugPrint('[MissionDetail] Could not load task sharing: $error');
+    }
+  }
+
+  Future<void> _openShareTask() async {
+    final choice = await showModalBottomSheet<_ShareChoice>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.public_rounded),
+              title: const Text('Share with everyone'),
+              trailing: _sharedPost?.visibility == PostVisibility.public
+                  ? const Icon(Icons.check_rounded)
+                  : null,
+              onTap: () => Navigator.pop(sheetContext, _ShareChoice.everyone),
+            ),
+            ListTile(
+              leading: const Icon(Icons.people_rounded),
+              title: const Text('Share with friends'),
+              trailing: _sharedPost?.visibility == PostVisibility.friends
+                  ? const Icon(Icons.check_rounded)
+                  : null,
+              onTap: () => Navigator.pop(sheetContext, _ShareChoice.friends),
+            ),
+            if (_sharedPost != null)
+              ListTile(
+                leading: Icon(
+                  Icons.visibility_off_rounded,
+                  color: Theme.of(sheetContext).colorScheme.error,
+                ),
+                title: Text(
+                  'Stop sharing',
+                  style: TextStyle(
+                    color: Theme.of(sheetContext).colorScheme.error,
+                  ),
+                ),
+                onTap: () => Navigator.pop(sheetContext, _ShareChoice.remove),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    if (choice == _ShareChoice.remove) {
+      await _removeSharedTask();
+      return;
+    }
+    await _shareTask(
+      choice == _ShareChoice.everyone
+          ? PostVisibility.public
+          : PostVisibility.friends,
+    );
+  }
+
+  Future<void> _shareTask(PostVisibility visibility) async {
+    final provider = context.read<AppProvider>();
+    final user = provider.currentUser;
+    if (user == null) return;
+    setState(() => _isSharing = true);
+    try {
+      final shared = await provider.socialService.shareCompletedTask(
+        mission: _mission,
+        userId: user.id,
+        visibility: visibility,
+      );
+      if (!mounted) return;
+      setState(() => _sharedPost = shared);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(visibility == PostVisibility.public
+              ? 'Task shared with everyone.'
+              : 'Task shared with friends.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not share this task.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
+    }
+  }
+
+  Future<void> _removeSharedTask() async {
+    final post = _sharedPost;
+    if (post == null) return;
+    setState(() => _isSharing = true);
+    try {
+      await context.read<AppProvider>().socialService.deletePost(post.id);
+      if (!mounted) return;
+      setState(() => _sharedPost = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Task removed from the feed.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not stop sharing this task.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
+    }
   }
 
   Future<void> _addPhoto(bool isBefore) async {
@@ -364,6 +490,9 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
     final isSolo = currentUser.usageMode == UsageMode.solo;
     final isSelfAssigned =
         _mission.userId == currentUser.id && _mission.assignedToUserId == null;
+    final canShare = isSolo &&
+        (_mission.status == MissionStatus.completed ||
+            _mission.status == MissionStatus.verified);
     final canAddBefore = isParent || _mission.beforePhotoUrl == null;
     final canAddAfter = !isParent || isSelfAssigned;
 
@@ -488,6 +617,30 @@ class _MissionDetailScreenState extends State<MissionDetailScreen> {
                       textAlign: TextAlign.center,
                     ),
                   ],
+                ),
+              ),
+            ],
+            if (canShare) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _isSharing ? null : _openShareTask,
+                  icon: _isSharing
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(_sharedPost == null
+                          ? Icons.share_rounded
+                          : Icons.check_circle_rounded),
+                  label: Text(
+                    _sharedPost == null
+                        ? 'SHARE FINISHED TASK'
+                        : _sharedPost!.visibility == PostVisibility.public
+                            ? 'SHARED WITH EVERYONE'
+                            : 'SHARED WITH FRIENDS',
+                  ),
                 ),
               ),
             ],

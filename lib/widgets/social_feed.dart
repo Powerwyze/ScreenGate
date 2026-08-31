@@ -51,16 +51,6 @@ class _SocialFeedState extends State<SocialFeed> {
     }
   }
 
-  Future<void> _compose() async {
-    final created = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: CyberpunkColors.surface,
-      builder: (_) => const _PostComposer(),
-    );
-    if (created == true) await _load();
-  }
-
   Future<void> _toggleLike(int index) async {
     final provider = context.read<AppProvider>();
     final user = provider.currentUser;
@@ -108,8 +98,8 @@ class _SocialFeedState extends State<SocialFeed> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete this post?'),
-        content: const Text('This will also remove its likes and comments.'),
+        title: const Text('Remove this task from the feed?'),
+        content: const Text('It will no longer be shared.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -129,7 +119,7 @@ class _SocialFeedState extends State<SocialFeed> {
       setState(
           () => _posts = _posts.where((item) => item.id != post.id).toList());
     } catch (_) {
-      _showError('Could not delete that post.');
+      _showError('Could not remove that shared task.');
     }
   }
 
@@ -146,61 +136,27 @@ class _SocialFeedState extends State<SocialFeed> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-          child: Column(
-            children: [
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<FeedScope>(
-                  segments: const [
-                    ButtonSegment(
-                      value: FeedScope.public,
-                      icon: Icon(Icons.public_rounded),
-                      label: Text('Everyone'),
-                    ),
-                    ButtonSegment(
-                      value: FeedScope.friends,
-                      icon: Icon(Icons.people_rounded),
-                      label: Text('Friends'),
-                    ),
-                  ],
-                  selected: {_scope},
-                  onSelectionChanged: (value) {
-                    setState(() => _scope = value.first);
-                    _load();
-                  },
+          child: SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<FeedScope>(
+              segments: const [
+                ButtonSegment(
+                  value: FeedScope.public,
+                  icon: Icon(Icons.public_rounded),
+                  label: Text('Everyone'),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Material(
-                color: CyberpunkColors.surfaceVariant,
-                borderRadius: BorderRadius.circular(8),
-                child: InkWell(
-                  onTap: _compose,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        _Avatar(
-                          name: user?.codename ?? 'Me',
-                          imageUrl: user?.avatarUrl,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Share what you are working on...',
-                            style: context.textStyles.bodyMedium?.copyWith(
-                              color: CyberpunkColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                        const Icon(Icons.edit_rounded),
-                      ],
-                    ),
-                  ),
+                ButtonSegment(
+                  value: FeedScope.friends,
+                  icon: Icon(Icons.people_rounded),
+                  label: Text('Friends'),
                 ),
-              ),
-            ],
+              ],
+              selected: {_scope},
+              onSelectionChanged: (value) {
+                setState(() => _scope = value.first);
+                _load();
+              },
+            ),
           ),
         ),
         Expanded(child: _buildFeed(user?.id)),
@@ -246,16 +202,16 @@ class _SocialFeedState extends State<SocialFeed> {
             const SizedBox(height: 12),
             Text(
               _scope == FeedScope.public
-                  ? 'No posts yet'
-                  : 'Nothing from friends yet',
+                  ? 'No shared tasks yet'
+                  : 'No shared friend tasks yet',
               style: context.textStyles.titleMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 6),
             Text(
               _scope == FeedScope.public
-                  ? 'Be the first to share an update.'
-                  : 'Add friends or ask them to share an update.',
+                  ? 'Finished tasks will show here.'
+                  : 'Finished friend tasks will show here.',
               style: context.textStyles.bodyMedium,
               textAlign: TextAlign.center,
             ),
@@ -279,117 +235,6 @@ class _SocialFeedState extends State<SocialFeed> {
             onDelete: () => _deletePost(post),
           );
         },
-      ),
-    );
-  }
-}
-
-class _PostComposer extends StatefulWidget {
-  const _PostComposer();
-
-  @override
-  State<_PostComposer> createState() => _PostComposerState();
-}
-
-class _PostComposerState extends State<_PostComposer> {
-  final _controller = TextEditingController();
-  PostVisibility _visibility = PostVisibility.public;
-  bool _saving = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final provider = context.read<AppProvider>();
-    final user = provider.currentUser;
-    if (user == null || _controller.text.trim().isEmpty) return;
-    setState(() => _saving = true);
-    try {
-      await provider.socialService.createPost(
-        userId: user.id,
-        content: _controller.text,
-        visibility: _visibility,
-      );
-      if (mounted) Navigator.pop(context, true);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not share that post.')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottom = MediaQuery.viewInsetsOf(context).bottom;
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + bottom),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text('New post', style: context.textStyles.titleLarge),
-                ),
-                IconButton(
-                  tooltip: 'Close',
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              minLines: 4,
-              maxLines: 8,
-              maxLength: 2000,
-              decoration: const InputDecoration(
-                hintText: 'What did you finish or what are you working on?',
-              ),
-            ),
-            const SizedBox(height: 10),
-            SegmentedButton<PostVisibility>(
-              segments: const [
-                ButtonSegment(
-                  value: PostVisibility.public,
-                  icon: Icon(Icons.public_rounded),
-                  label: Text('Everyone'),
-                ),
-                ButtonSegment(
-                  value: PostVisibility.friends,
-                  icon: Icon(Icons.people_rounded),
-                  label: Text('Friends only'),
-                ),
-              ],
-              selected: {_visibility},
-              onSelectionChanged: (value) =>
-                  setState(() => _visibility = value.first),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _saving ? null : _save,
-                icon: _saving
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send_rounded),
-                label: const Text('Share'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -456,19 +301,103 @@ class _PostCard extends StatelessWidget {
               ),
               if (isMine)
                 PopupMenuButton<String>(
-                  tooltip: 'Post options',
+                  tooltip: 'Shared task options',
                   onSelected: (_) => onDelete(),
                   itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'delete', child: Text('Delete post')),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Remove from feed'),
+                    ),
                   ],
                 ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            post.content,
-            style: context.textStyles.bodyLarge?.copyWith(height: 1.4),
+          Row(
+            children: [
+              Icon(
+                Icons.task_alt_rounded,
+                size: 18,
+                color: CyberpunkColors.neonTealBright,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'TASK FINISHED',
+                style: context.textStyles.labelMedium?.copyWith(
+                  color: CyberpunkColors.neonTealBright,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
+          const SizedBox(height: 8),
+          Text(
+            post.taskTitle,
+            style: context.textStyles.titleLarge?.copyWith(
+              color: CyberpunkColors.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (post.taskDescription.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              post.taskDescription,
+              style: context.textStyles.bodyMedium?.copyWith(
+                color: CyberpunkColors.textSecondary,
+                height: 1.35,
+              ),
+            ),
+          ],
+          if (post.taskPhotoUrl != null) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: AspectRatio(
+                aspectRatio: 4 / 3,
+                child: Image.network(
+                  post.taskPhotoUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => ColoredBox(
+                    color: CyberpunkColors.surface,
+                    child: const Center(
+                      child: Icon(Icons.broken_image_outlined, size: 40),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              ...List.generate(
+                5,
+                (index) => Icon(
+                  index + 1 <= post.starsEarned
+                      ? Icons.star_rounded
+                      : index + .5 <= post.starsEarned
+                          ? Icons.star_half_rounded
+                          : Icons.star_border_rounded,
+                  size: 20,
+                  color: CyberpunkColors.neonOrangeBright,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                post.starsEarned > 0
+                    ? '${post.starsEarned.toStringAsFixed(1)} stars'
+                    : 'Finished',
+                style: context.textStyles.labelMedium,
+              ),
+            ],
+          ),
+          if (post.content != 'Task completed.') ...[
+            const SizedBox(height: 10),
+            Text(
+              post.content,
+              style: context.textStyles.bodyMedium?.copyWith(height: 1.35),
+            ),
+          ],
           const SizedBox(height: 12),
           Divider(color: CyberpunkColors.border),
           Row(

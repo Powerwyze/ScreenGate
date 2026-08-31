@@ -81,7 +81,12 @@ class NotificationService {
         createdAt: DateTime.now(),
       );
 
-      await SupabaseService.insert('notifications', notification.toJson());
+      // Cross-user notifications are readable only by the recipient. Asking
+      // PostgREST to return the inserted row makes the sender fail the SELECT
+      // policy and rolls the insert back, so this write must not use .select().
+      await SupabaseConfig.client
+          .from('notifications')
+          .insert(notification.toJson());
     } catch (e) {
       debugPrint('[NotificationService] Error creating notification: $e');
       rethrow;

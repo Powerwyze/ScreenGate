@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:screengate/models/mission.dart';
 import 'package:screengate/models/notification.dart';
 import 'package:screengate/models/social_post.dart';
 import 'package:screengate/services/friend_service.dart';
@@ -24,7 +25,10 @@ class SocialService {
     int limit = 50,
   }) async {
     try {
-      dynamic query = SupabaseConfig.client.from('social_posts').select();
+      dynamic query = SupabaseConfig.client
+          .from('social_posts')
+          .select()
+          .not('mission_id', 'is', null);
       if (scope == FeedScope.public) {
         query = query.eq('visibility', PostVisibility.public.name);
       } else {
@@ -90,19 +94,41 @@ class SocialService {
     }).toList();
   }
 
-  Future<void> createPost({
+  Future<SocialPost> shareCompletedTask({
+    required Mission mission,
     required String userId,
-    required String content,
     required PostVisibility visibility,
   }) async {
-    final cleanContent = content.trim();
-    if (cleanContent.isEmpty) throw Exception('Write something first.');
-    await SupabaseService.insert('social_posts', {
-      'id': const Uuid().v4(),
-      'user_id': userId,
-      'content': cleanContent,
-      'visibility': visibility.name,
-    });
+    if (mission.status != MissionStatus.completed &&
+        mission.status != MissionStatus.verified) {
+      throw Exception('Finish the task before sharing it.');
+    }
+    final result = await SupabaseConfig.client.rpc(
+      'share_completed_task',
+      params: {
+        'p_mission_id': mission.id,
+        'p_visibility': visibility.name,
+      },
+    );
+    final rows = await _hydratePosts(
+      [Map<String, dynamic>.from(result as Map)],
+      userId,
+    );
+    return rows.single;
+  }
+
+  Future<SocialPost?> getSharedTask({
+    required String missionId,
+    required String viewerId,
+  }) async {
+    final row = await SupabaseConfig.client
+        .from('social_posts')
+        .select()
+        .eq('mission_id', missionId)
+        .maybeSingle();
+    if (row == null) return null;
+    final posts = await _hydratePosts([row], viewerId);
+    return posts.single;
   }
 
   Future<bool> toggleLike({
@@ -129,8 +155,8 @@ class SocialService {
         await _notificationService.createNotification(
           userId: post.userId,
           type: NotificationType.postLike,
-          title: 'Someone liked your post',
-          message: '$userName liked what you shared.',
+          title: 'Someone liked your task',
+          message: '$userName liked your finished task.',
           data: {'post_id': post.id, 'sender_id': userId},
         );
       } catch (error) {
@@ -186,7 +212,7 @@ class SocialService {
           userId: post.userId,
           type: NotificationType.postComment,
           title: 'New comment',
-          message: '$userName commented on your post.',
+          message: '$userName commented on your finished task.',
           data: {'post_id': post.id, 'sender_id': userId},
         );
       } catch (error) {

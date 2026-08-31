@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -286,15 +288,29 @@ class _RequestsTabState extends State<_RequestsTab> {
   List<Friend> _requests = [];
   Map<String, User> _requestUsers = {};
   bool _isLoading = true;
+  String? _error;
+  StreamSubscription<List<Friend>>? _requestSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadRequests();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _watchRequests());
+  }
+
+  @override
+  void dispose() {
+    _requestSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadRequests() async {
-    setState(() => _isLoading = true);
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
     final provider = context.read<AppProvider>();
     final userId = provider.currentUser?.id;
     if (userId == null) {
@@ -302,7 +318,32 @@ class _RequestsTabState extends State<_RequestsTab> {
       return;
     }
 
-    final requests = await provider.friendService.getPendingRequests(userId);
+    try {
+      final requests = await provider.friendService.getPendingRequests(userId);
+      await _applyRequests(requests);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Friend requests could not load.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _watchRequests() {
+    final provider = context.read<AppProvider>();
+    final userId = provider.currentUser?.id;
+    if (userId == null) return;
+    _requestSubscription?.cancel();
+    _requestSubscription = provider.friendService
+        .getPendingRequestsStream(userId)
+        .listen(_applyRequests, onError: (Object error) {
+      debugPrint('[Social] Friend request stream failed: $error');
+    });
+  }
+
+  Future<void> _applyRequests(List<Friend> requests) async {
+    final provider = context.read<AppProvider>();
     final requesterIds = requests.map((r) => r.userId).toList();
     final requestUsers = await provider.userService.getUsersByIds(requesterIds);
 
@@ -311,10 +352,12 @@ class _RequestsTabState extends State<_RequestsTab> {
       requestUsersMap[user.id] = user;
     }
 
+    if (!mounted) return;
     setState(() {
       _requests = requests;
       _requestUsers = requestUsersMap;
       _isLoading = false;
+      _error = null;
     });
   }
 
@@ -346,20 +389,40 @@ class _RequestsTabState extends State<_RequestsTab> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_requests.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    if (_error != null) {
+      return RefreshIndicator(
+        onRefresh: _loadRequests,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Text('🔔', style: context.textStyles.displayMedium),
+            const SizedBox(height: 140),
+            const Icon(Icons.cloud_off_rounded, size: 48),
+            const SizedBox(height: 12),
+            Text(_error!, textAlign: TextAlign.center),
+          ],
+        ),
+      );
+    }
+
+    if (_requests.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _loadRequests,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            const SizedBox(height: 140),
+            Text('🔔',
+                style: context.textStyles.displayMedium,
+                textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            Text('No Pending Requests',
-                style: context.textStyles.titleLarge!.bold),
+            Text('No Friend Requests',
+                style: context.textStyles.titleLarge!.bold,
+                textAlign: TextAlign.center),
             const SizedBox(height: 8),
             Padding(
               padding: AppSpacing.horizontalXl,
               child: Text(
-                'You\'ll see friend requests here when someone adds you.',
+                'New requests will show here.',
                 style: context.textStyles.bodyMedium!.withColor(
                   Theme.of(context).colorScheme.onSurfaceVariant,
                 ),

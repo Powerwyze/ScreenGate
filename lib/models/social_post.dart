@@ -11,9 +11,15 @@ enum PostVisibility {
 class SocialPost {
   final String id;
   final String userId;
+  final String missionId;
   final String authorName;
   final String? authorAvatarUrl;
   final String content;
+  final String taskTitle;
+  final String taskDescription;
+  final String? taskPhotoUrl;
+  final double starsEarned;
+  final DateTime completedAt;
   final PostVisibility visibility;
   final DateTime createdAt;
   final int likeCount;
@@ -23,9 +29,15 @@ class SocialPost {
   const SocialPost({
     required this.id,
     required this.userId,
+    required this.missionId,
     required this.authorName,
     this.authorAvatarUrl,
     required this.content,
+    required this.taskTitle,
+    required this.taskDescription,
+    this.taskPhotoUrl,
+    required this.starsEarned,
+    required this.completedAt,
     required this.visibility,
     required this.createdAt,
     this.likeCount = 0,
@@ -44,9 +56,15 @@ class SocialPost {
       SocialPost(
         id: json['id'] as String,
         userId: json['user_id'] as String,
+        missionId: json['mission_id'] as String,
         authorName: authorName,
         authorAvatarUrl: authorAvatarUrl,
         content: json['content'] as String,
+        taskTitle: json['task_title'] as String,
+        taskDescription: json['task_description'] as String? ?? '',
+        taskPhotoUrl: json['task_photo_url'] as String?,
+        starsEarned: (json['stars_earned'] as num?)?.toDouble() ?? 0,
+        completedAt: DateTime.parse(json['completed_at'] as String),
         visibility: PostVisibility.fromJson(json['visibility']),
         createdAt: DateTime.parse(json['created_at'] as String),
         likeCount: likeCount,
@@ -62,9 +80,15 @@ class SocialPost {
       SocialPost(
         id: id,
         userId: userId,
+        missionId: missionId,
         authorName: authorName,
         authorAvatarUrl: authorAvatarUrl,
         content: content,
+        taskTitle: taskTitle,
+        taskDescription: taskDescription,
+        taskPhotoUrl: taskPhotoUrl,
+        starsEarned: starsEarned,
+        completedAt: completedAt,
         visibility: visibility,
         createdAt: createdAt,
         likeCount: likeCount ?? this.likeCount,

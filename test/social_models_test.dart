@@ -16,12 +16,18 @@ void main() {
     expect(relationship.otherUserId('recipient'), 'sender');
   });
 
-  test('social post reads visibility and engagement data', () {
+  test('shared task reads completion and engagement data', () {
     final post = SocialPost.fromJson(
       {
         'id': 'post',
         'user_id': 'author',
-        'content': 'Finished my task',
+        'mission_id': 'mission',
+        'content': 'Great focus.',
+        'task_title': 'Clean my desk',
+        'task_description': 'Put every item back in its place.',
+        'task_photo_url': 'https://example.com/after.jpg',
+        'stars_earned': 4.5,
+        'completed_at': '2026-08-26T11:55:00.000Z',
         'visibility': 'friends',
         'created_at': '2026-08-26T12:00:00.000Z',
       },
@@ -31,6 +37,10 @@ void main() {
       isLikedByMe: true,
     );
 
+    expect(post.missionId, 'mission');
+    expect(post.taskTitle, 'Clean my desk');
+    expect(post.taskDescription, 'Put every item back in its place.');
+    expect(post.starsEarned, 4.5);
     expect(post.visibility, PostVisibility.friends);
     expect(post.likeCount, 2);
     expect(post.commentCount, 1);
